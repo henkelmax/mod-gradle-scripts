@@ -34,6 +34,7 @@ ext.java_version = getOrDefault('java_version', DEFAULT_JAVA_VERSION) as int
 ext.mod_loader = getOrDefault('mod_loader', DEFAULT_MOD_LOADER)
 ext.mod_authors = getOrDefault('mod_authors', [DEFAULT_MOD_AUTHOR], it -> stringToStringList(it))
 ext.minecraft_user_name_prefix = getOrDefault('minecraft_user_name_prefix', DEFAULT_MINECRAFT_USER_NAME_PREFIX)
+ext.use_mixins = getOrDefault('use_mixins', false, it -> it.toBoolean()) //TODO Maybe only for Forge/NeoForge, since they are INCLUDED?? by default from Fabric??
 
 def is_fabric = mod_loader.equalsIgnoreCase(FABRIC_MOD_LOADER)
 def is_neoforge = mod_loader.equalsIgnoreCase(NEOFORGE_MOD_LOADER)
@@ -42,10 +43,12 @@ def is_neoforge = mod_loader.equalsIgnoreCase(NEOFORGE_MOD_LOADER)
 if (is_fabric) {
     ext.fabric_loader_version = getOrDefault('fabric_loader_version', DEFAULT_FABRIC_LOADER_VERSION)
     ext.included_fabric_api_modules = getOrDefault('included_fabric_api_modules', [], it -> stringToStringList(it))
-    ext.import_fabric_api = getOrDefault('import_fabric_api', false)
-    checkProperty('fabric_api_version')
+    ext.import_fabric_api = getOrDefault('import_fabric_api', false, it -> it.toBoolean())
+    if (import_fabric_api) {
+        checkProperty('fabric_api_version')
+    }
     // TODO Add access widener path to fabric.mod.json
-    ext.enable_accesswideners = getOrDefault('enable_accesswideners', false)
+    ext.enable_accesswideners = getOrDefault('enable_accesswideners', false, it -> it.toBoolean())
 }
 
 // Neoforge specific variables
@@ -54,16 +57,16 @@ if (is_neoforge) {
 }
 
 // Libraries
-ext.enable_configbuilder = getOrDefault('enable_configbuilder', false)
+ext.enable_configbuilder = getOrDefault('enable_configbuilder', false, it -> it.toBoolean())
 if (enable_configbuilder) {
     ext.configbuilder_version = getOrDefault('configbuilder_version', DEFAULT_CONFIGBUILDER_VERSION)
 }
 
 // Upload
 ext.upload_release_type = getOrDefault('upload_release_type', DEFAULT_RELEASE_TYPE)
-ext.upload_recommended = getOrDefault('upload_recommended', false)
+ext.upload_recommended = getOrDefault('upload_recommended', false, it -> it.toBoolean())
 // CurseForge upload
-ext.enable_curseforge_upload = getOrDefault('enable_curseforge_upload', true)
+ext.enable_curseforge_upload = getOrDefault('enable_curseforge_upload', true, it -> it.toBoolean())
 if (enable_curseforge_upload) {
     checkPlugin('com.matthewprenger.cursegradle')
     checkProperty('curseforge_upload_id')
@@ -71,14 +74,14 @@ if (enable_curseforge_upload) {
     ext.curseforge_upload_optional_dependencies = getOrDefault('curseforge_upload_optional_dependencies', [], it -> stringToStringList(it))
 }
 // Modrinth upload
-ext.enable_modrinth_upload = getOrDefault('enable_modrinth_upload', true)
+ext.enable_modrinth_upload = getOrDefault('enable_modrinth_upload', true, it -> it.toBoolean())
 if (enable_modrinth_upload) {
     checkPlugin('com.modrinth.minotaur')
     checkProperty('modrinth_upload_id')
     ext.modrinth_upload_optional_dependencies = getOrDefault('modrinth_upload_optional_dependencies', [], it -> stringToStringList(it))
 }
 // Mod update
-ext.enable_mod_update = getOrDefault('enable_mod_update', true)
+ext.enable_mod_update = getOrDefault('enable_mod_update', true, it -> it.toBoolean())
 
 // Checking if mandatory plugins exist
 if (is_fabric) {
@@ -109,7 +112,7 @@ targetCompatibility = java_language_version
 java.toolchain.languageVersion = java_language_version
 
 group = getOrDefault('maven_group', "de.maxhenkel.${mod_id.replaceAll('_', '')}")
-archivesBaseName = getOrDefault('archives_base_name', mod_id.replaceAll('_', '-'))
+archivesBaseName = getOrDefault('archives_base_name', "${mod_id.replaceAll('_', '-')}-${mod_loader}")
 version = mod_version
 
 // Run configurations
@@ -130,21 +133,36 @@ if (is_fabric) {
 
 // Neoforge run configuration
 if (is_neoforge) {
+    configurations {
+        minecraftLibrary {}
+        // implementation.extendsFrom minecraftLibrary
+        minecraftLibrary.extendsFrom implementation
+    }
+
     runs {
+        configureEach {
+            modSource project.sourceSets.main
+            systemProperty 'forge.logging.console.level', 'debug'
+            dependencies {
+                runtime project.configurations.minecraftLibrary
+            }
+        }
         client {
             workingDirectory file('run')
-            systemProperty 'forge.logging.console.level', 'debug'
             programArguments = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
-            modSource project.sourceSets.main //TODO Add support for multi-loader projects
         }
         server {
             workingDirectory file('run/server')
-            systemProperty 'forge.logging.console.level', 'debug'
-            modSource project.sourceSets.main //TODO Add support for multi-loader projects
         }
     }
 
     sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+    if (use_mixins) {
+        mixin {
+            config "${mod_id}.mixins.json"
+        }
+    }
 }
 
 // Dependency management
@@ -165,7 +183,8 @@ dependencies {
         modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
 
         // Fabric API
-        if (fabric_api_version != null) {
+        if (hasProperty('fabric_api_version')) {
+            // TODO Throw error when API modules are present but no Fabric API version
             included_fabric_api_modules.forEach {
                 include(modImplementation(fabricApi.module(it, fabric_api_version)))
             }
@@ -184,6 +203,9 @@ dependencies {
     if (enable_configbuilder) {
         implementation "de.maxhenkel.configbuilder:configbuilder:${configbuilder_version}"
         shadow "de.maxhenkel.configbuilder:configbuilder:${configbuilder_version}"
+        if (is_neoforge) {
+            minecraftLibrary "de.maxhenkel.configbuilder:configbuilder:${configbuilder_version}"
+        }
     }
 }
 
@@ -275,7 +297,7 @@ if (enable_curseforge_upload) {
             }
             addGameVersion "Java ${java_version}"
             mainArtifact(shadowJar) { //TODO Check if this works
-                //mainArtifact(file("${layout.buildDirectory.asFile.get()}/libs/${archivesBaseName}-${version}.jar")) { 
+                //mainArtifact(file("${layout.buildDirectory.asFile.get()}/libs/${archivesBaseName}-${version}.jar")) {
                 displayName = "[${mod_loader.toUpperCase()}][${minecraft_version}] ${mod_display_name} ${mod_version}"
                 relations {
                     curseforge_upload_optional_dependencies.forEach({
