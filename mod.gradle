@@ -265,15 +265,17 @@ dependencies {
         minecraft "com.mojang:minecraft:${minecraft_version}"
         mappings loom.officialMojangMappings()
         modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
-
         // Fabric API
-        if (hasProperty('fabric_api_version')) {
-            // TODO Throw error when API modules are present but no Fabric API version
+        if (project.hasProperty('fabric_api_version')) {
             included_fabric_api_modules.forEach {
                 include(modImplementation(fabricApi.module(it, fabric_api_version)))
             }
             if (import_fabric_api) {
                 modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+            }
+        } else {
+            if (included_fabric_api_modules) {
+                throw new RuntimeException('Fabric API modules present but not Fabric API version defined')
             }
         }
     }
@@ -533,7 +535,7 @@ if (enable_mod_update) {
  * @return the property
  */
 def <T> T getOrDefault(String propertyName, T defaultValue = null, Closure mutator = { it }) {
-    if (!hasProperty(propertyName)) {
+    if (!project.hasProperty(propertyName)) {
         return defaultValue
     }
     return mutator(getProperty(propertyName))
@@ -545,7 +547,7 @@ def <T> T getOrDefault(String propertyName, T defaultValue = null, Closure mutat
  * @param propertyName the name of the property to check
  */
 def checkProperty(String propertyName) {
-    if (!hasProperty(propertyName)) {
+    if (!project.hasProperty(propertyName)) {
         throw new RuntimeException("No property '${propertyName}' defined")
     }
 }
