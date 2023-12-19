@@ -48,9 +48,9 @@ ext.included_projects = included_projects.findAll {
     return p != getProject()
 }
 
-def is_fabric = mod_loader.equalsIgnoreCase(FABRIC_MOD_LOADER)
-def is_neoforge = mod_loader.equalsIgnoreCase(NEOFORGE_MOD_LOADER)
-def is_forge = mod_loader.equalsIgnoreCase(FORGE_MOD_LOADER)
+ext.is_fabric = mod_loader.equalsIgnoreCase(FABRIC_MOD_LOADER)
+ext.is_neoforge = mod_loader.equalsIgnoreCase(NEOFORGE_MOD_LOADER)
+ext.is_forge = mod_loader.equalsIgnoreCase(FORGE_MOD_LOADER)
 
 // Fabric specific variables
 if (is_fabric) {
@@ -62,6 +62,7 @@ if (is_fabric) {
     }
     // TODO Add access widener path to fabric.mod.json
     ext.enable_accesswideners = getOrDefault('enable_accesswideners', false, it -> it.toBoolean())
+    ext.add_quilt_supported_tag = getOrDefault('add_quilt_supported_tag', true, it -> it.toBoolean())
 }
 
 // Neoforge specific variables
@@ -440,6 +441,9 @@ if (enable_curseforge_upload) {
             addGameVersion curseforge_upload_minecraft_version
             if (is_fabric) {
                 addGameVersion 'Fabric'
+                if (add_quilt_supported_tag) {
+                    addGameVersion 'Quilt'
+                }
             }
             if (is_neoforge) {
                 addGameVersion 'NeoForge'
@@ -448,7 +452,7 @@ if (enable_curseforge_upload) {
                 addGameVersion 'Forge'
             }
             addGameVersion "Java ${java_version}"
-            mainArtifact(shadowJar) { //TODO Check if this works
+            mainArtifact(getUploadArtefact()) { //TODO Check if this works
                 //mainArtifact(file("${layout.buildDirectory.asFile.get()}/libs/${archivesBaseName}-${version}.jar")) {
                 displayName = "[${mod_loader.toUpperCase()}][${minecraft_version}] ${mod_display_name} ${mod_version}"
                 if (curseforge_upload_optional_dependencies) {
@@ -485,11 +489,14 @@ if (enable_modrinth_upload) {
         projectId = modrinth_upload_id
         versionNumber = "${mod_loader}-${mod_version}"
         versionName = "[${mod_loader.toUpperCase()}][${minecraft_version}] ${mod_display_name} ${mod_version}"
-        uploadFile = shadowJar
+        uploadFile = getUploadArtefact()
         versionType = upload_release_type.toUpperCase()
         changelog = getChangelogFile().text
         gameVersions = [minecraft_version]
         loaders = [mod_loader]
+        if (is_fabric && add_quilt_supported_tag) {
+            loaders.add('quilt')
+        }
         dependencies {
             modrinth_upload_optional_dependencies.forEach({
                 optional.project it
@@ -563,4 +570,8 @@ def getChangelogFile() {
         throw new RuntimeException('Missing changelog')
     }
     return file
+}
+
+def getUploadArtefact() {
+    return is_fabric ? remapJar : shadowJar
 }
