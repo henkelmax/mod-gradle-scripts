@@ -451,10 +451,12 @@ if (enable_curseforge_upload) {
             mainArtifact(shadowJar) { //TODO Check if this works
                 //mainArtifact(file("${layout.buildDirectory.asFile.get()}/libs/${archivesBaseName}-${version}.jar")) {
                 displayName = "[${mod_loader.toUpperCase()}][${minecraft_version}] ${mod_display_name} ${mod_version}"
-                relations {
-                    curseforge_upload_optional_dependencies.forEach({
-                        optionalDependency it
-                    })
+                if (curseforge_upload_optional_dependencies) {
+                    relations {
+                        curseforge_upload_optional_dependencies.forEach({
+                            optionalDependency it
+                        })
+                    }
                 }
             }
             //TODO Check if it works without that on Fabric
@@ -500,6 +502,7 @@ if (enable_modrinth_upload) {
 
 // Mod Update
 if (enable_mod_update) {
+    def changelog = getChangelogFile()
     modUpdate {
         apiKey = mod_update_api_key
         serverURL = 'https://update.maxhenkel.de/'
@@ -507,7 +510,7 @@ if (enable_mod_update) {
         gameVersion = minecraft_version
         modLoader = mod_loader
         modVersion = mod_version
-        changelogFile = getChangelogFile()
+        changelogFile = changelog
         releaseType = upload_release_type
         tags = upload_recommended == 'true' ? ['recommended'] : []
     }
@@ -555,5 +558,9 @@ static def stringToStringList(String str) {
 }
 
 def getChangelogFile() {
-    return file('changelog.md').exists() ? file('changelog.md') : file("${rootDir}/changelog.md")
+    def file = file('changelog.md').exists() ? file('changelog.md') : file("${rootDir}/changelog.md")
+    if (file == null || !file.exists()) {
+        throw new RuntimeException('Missing changelog')
+    }
+    return file
 }
