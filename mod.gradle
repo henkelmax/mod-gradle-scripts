@@ -1,0 +1,384 @@
+// Constants
+def MIN_GRADLE_VERSION = '8.5'
+def MAX_EXCLUDED_GRADLE_VERSION = '9'
+def FABRIC_MOD_LOADER = 'fabric'
+def NEOFORGE_MOD_LOADER = 'neoforge'
+
+def DEFAULT_JAVA_VERSION = '17'
+def DEFAULT_MOD_LOADER = FABRIC_MOD_LOADER
+def DEFAULT_MOD_AUTHOR = 'Max Henkel'
+def DEFAULT_FABRIC_LOADER_VERSION = '0.15.1'
+def DEFAULT_CONFIGBUILDER_VERSION = '2.0.1'
+def DEFAULT_RELEASE_TYPE = 'alpha'
+def DEFAULT_MINECRAFT_USER_NAME_PREFIX = 'henkelmax'
+
+// Gradle version checks
+def gradle_version = VersionNumber.parse(getProject().getGradle().getGradleVersion())
+// Check for min Gradle version
+if (gradle_version < VersionNumber.parse(MIN_GRADLE_VERSION)) {
+    throw new RuntimeException("Outdated Gradle version, please update to ${MIN_GRADLE_VERSION} or later")
+}
+// Check for max Gradle version
+if (gradle_version >= VersionNumber.parse(MAX_EXCLUDED_GRADLE_VERSION)) {
+    throw new RuntimeException("Gradle version too new, please use <${MAX_EXCLUDED_GRADLE_VERSION}")
+}
+
+// Variables
+checkProperty('minecraft_version')
+
+checkProperty('mod_id')
+checkProperty('mod_version')
+checkProperty('mod_display_name')
+
+ext.java_version = getOrDefault('java_version', DEFAULT_JAVA_VERSION) as int
+ext.mod_loader = getOrDefault('mod_loader', DEFAULT_MOD_LOADER)
+ext.mod_authors = getOrDefault('mod_authors', [DEFAULT_MOD_AUTHOR], it -> stringToStringList(it))
+ext.minecraft_user_name_prefix = getOrDefault('minecraft_user_name_prefix', DEFAULT_MINECRAFT_USER_NAME_PREFIX)
+
+def is_fabric = mod_loader.equalsIgnoreCase(FABRIC_MOD_LOADER)
+def is_neoforge = mod_loader.equalsIgnoreCase(NEOFORGE_MOD_LOADER)
+
+// Fabric specific variables
+if (is_fabric) {
+    ext.fabric_loader_version = getOrDefault('fabric_loader_version', DEFAULT_FABRIC_LOADER_VERSION)
+    ext.included_fabric_api_modules = getOrDefault('included_fabric_api_modules', [], it -> stringToStringList(it))
+    ext.import_fabric_api = getOrDefault('import_fabric_api', false)
+    checkProperty('fabric_api_version')
+    // TODO Add access widener path to fabric.mod.json
+    ext.enable_accesswideners = getOrDefault('enable_accesswideners', false)
+}
+
+// Neoforge specific variables
+if (is_neoforge) {
+    checkProperty('neoforge_version')
+}
+
+// Libraries
+ext.enable_configbuilder = getOrDefault('enable_configbuilder', false)
+if (enable_configbuilder) {
+    ext.configbuilder_version = getOrDefault('configbuilder_version', DEFAULT_CONFIGBUILDER_VERSION)
+}
+
+// Upload
+ext.upload_release_type = getOrDefault('upload_release_type', DEFAULT_RELEASE_TYPE)
+ext.upload_recommended = getOrDefault('upload_recommended', false)
+// CurseForge upload
+ext.enable_curseforge_upload = getOrDefault('enable_curseforge_upload', true)
+if (enable_curseforge_upload) {
+    checkPlugin('com.matthewprenger.cursegradle')
+    checkProperty('curseforge_upload_id')
+    ext.curseforge_upload_minecraft_version = getOrDefault('curseforge_upload_minecraft_version', minecraft_version)
+    ext.curseforge_upload_optional_dependencies = getOrDefault('curseforge_upload_optional_dependencies', [], it -> stringToStringList(it))
+}
+// Modrinth upload
+ext.enable_modrinth_upload = getOrDefault('enable_modrinth_upload', true)
+if (enable_modrinth_upload) {
+    checkPlugin('com.modrinth.minotaur')
+    checkProperty('modrinth_upload_id')
+    ext.modrinth_upload_optional_dependencies = getOrDefault('modrinth_upload_optional_dependencies', [], it -> stringToStringList(it))
+}
+// Mod update
+ext.enable_mod_update = getOrDefault('enable_mod_update', true)
+
+// Checking if mandatory plugins exist
+if (is_fabric) {
+    checkPlugin('fabric-loom')
+}
+if (is_neoforge) {
+    // Neoforge gradle
+    checkPlugin('net.neoforged.gradle.userdev')
+    // Neoforge mixins
+    checkPlugin('net.neoforged.gradle.mixin')
+}
+
+checkPlugin('com.github.johnrengelman.shadow')
+
+apply plugin: 'java'
+apply plugin: 'idea'
+
+idea {
+    module {
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+
+def java_language_version = JavaLanguageVersion.of(java_version)
+sourceCompatibility = java_language_version
+targetCompatibility = java_language_version
+java.toolchain.languageVersion = java_language_version
+
+group = getOrDefault('maven_group', "de.maxhenkel.${mod_id.replaceAll('_', '')}")
+archivesBaseName = getOrDefault('archives_base_name', mod_id.replaceAll('_', '-'))
+version = mod_version
+
+// Run configurations
+// Fabric run configuration
+if (is_fabric) {
+    runClient.doFirst {
+        args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+    }
+
+    // Access widener
+    def accesswidenerFile = file("src/main/resources/${mod_id}.accesswidener")
+    if (enable_accesswideners && accesswidenerFile.exists()) {
+        loom {
+            accessWidenerPath = accesswidenerFile
+        }
+    }
+}
+
+// Neoforge run configuration
+if (is_neoforge) {
+    runs {
+        client {
+            workingDirectory file('run')
+            systemProperty 'forge.logging.console.level', 'debug'
+            programArguments = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+            modSource project.sourceSets.main //TODO Add support for multi-loader projects
+        }
+        server {
+            workingDirectory file('run/server')
+            systemProperty 'forge.logging.console.level', 'debug'
+            modSource project.sourceSets.main //TODO Add support for multi-loader projects
+        }
+    }
+
+    sourceSets.main.resources { srcDir 'src/generated/resources' }
+}
+
+// Dependency management
+repositories {
+    maven { url = 'https://maven.maxhenkel.de/repository/public' }
+    maven {
+        url = 'https://api.modrinth.com/maven'
+        content {
+            includeGroup "maven.modrinth"
+        }
+    }
+}
+
+dependencies {
+    if (is_fabric) {
+        minecraft "com.mojang:minecraft:${minecraft_version}"
+        mappings loom.officialMojangMappings()
+        modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+
+        // Fabric API
+        if (fabric_api_version != null) {
+            included_fabric_api_modules.forEach {
+                include(modImplementation(fabricApi.module(it, fabric_api_version)))
+            }
+            if (import_fabric_api) {
+                modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+            }
+        }
+    }
+
+    if (is_neoforge) {
+        implementation "net.neoforged:neoforge:${neoforge_version}"
+    }
+
+    implementation 'com.google.code.findbugs:jsr305:3.0.2'
+
+    if (enable_configbuilder) {
+        implementation "de.maxhenkel.configbuilder:configbuilder:${configbuilder_version}"
+        shadow "de.maxhenkel.configbuilder:configbuilder:${configbuilder_version}"
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = 'UTF-8'
+    it.options.release = 17
+}
+
+java {
+    withSourcesJar()
+}
+
+jar {
+    from('LICENSE') {
+        rename { "${it}_${archivesBaseName}" }
+    }
+
+    // Manifest attributes
+    if (is_neoforge) {
+        manifest {
+            attributes(['Specification-Title'     : mod_display_name,
+                        'Specification-Vendor'    : mod_authors.join(', '),
+                        'Specification-Version'   : '1',
+                        'Implementation-Title'    : mod_display_name,
+                        'Implementation-Version'  : mod_version,
+                        'Implementation-Vendor'   : mod_authors.join(', '),
+                        'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),])
+        }
+    }
+}
+jar.finalizedBy('shadowJar')
+
+shadowJar {
+    configurations = [project.configurations.shadow]
+    archiveClassifier = 'shadow-dev' //TODO check
+    //archiveClassifier = ''
+    if (enable_configbuilder) {
+        relocate 'de.maxhenkel.configbuilder', "de.maxhenkel.${mod_id}.configbuilder"
+    }
+}
+
+if (is_fabric) {
+    remapJar {
+        dependsOn shadowJar
+        inputFile = shadowJar.archiveFile.get()
+    }
+}
+
+// NeoForge clean fix
+if (is_neoforge) {
+    // https://github.com/neoforged/NeoGradle/issues/18#issuecomment-1858754401
+    tasks.register('customClean', Delete) {
+        doLast {
+            def files = []
+            fileTree("build")
+                    .exclude('**/expanded.lock')
+                    .visit { FileVisitDetails fvd ->
+                        files << fvd.file
+                    }
+            files.reverse()
+                    .each { f ->
+                        def file = file(f)
+                        if (!file.exists()) return;
+                        if ((file.isDirectory() && file.list().size() == 0)
+                                || !file.isDirectory())
+                            delete f
+                    }
+        }
+    }
+    clean.dependsOn customClean
+    clean.enabled = false
+}
+
+// CurseForge Upload
+if (enable_curseforge_upload) {
+    curseforge {
+        apiKey = file('curseforge_api_key.txt').exists() ? file('curseforge_api_key.txt').text : ''
+        project {
+            id = curseforge_upload_id
+            changelogType = 'markdown'
+            changelog = getChangelogFile()
+            releaseType = upload_release_type
+            addGameVersion curseforge_upload_minecraft_version
+            if (is_fabric) {
+                addGameVersion 'Fabric'
+            }
+            if (is_neoforge) {
+                addGameVersion 'NeoForge'
+            }
+            addGameVersion "Java ${java_version}"
+            mainArtifact(shadowJar) { //TODO Check if this works
+                //mainArtifact(file("${layout.buildDirectory.asFile.get()}/libs/${archivesBaseName}-${version}.jar")) { 
+                displayName = "[${mod_loader.toUpperCase()}][${minecraft_version}] ${mod_display_name} ${mod_version}"
+                relations {
+                    curseforge_upload_optional_dependencies.forEach({
+                        optionalDependency it
+                    })
+                }
+            }
+            //TODO Check if it works without that on Fabric
+            /*afterEvaluate {
+                uploadTask.dependsOn(remapJar)
+            }*/
+        }
+        options {
+            forgeGradleIntegration = false
+        }
+    }
+    tasks.curseforge.dependsOn(shadowJar)
+}
+
+// Modrinth Upload
+if (enable_modrinth_upload) {
+    tasks.modrinth.configure({
+        group = 'upload'
+    })
+    tasks.modrinthSyncBody.configure({
+        group = 'upload'
+    })
+
+    modrinth {
+        token = file("${rootDir}/modrinth_token.txt").exists() ? file("${rootDir}/modrinth_token.txt").text : ''
+        projectId = modrinth_upload_id
+        versionNumber = "${mod_loader}-${mod_version}"
+        versionName = "[${mod_loader.toUpperCase()}][${minecraft_version}] ${mod_display_name} ${mod_version}"
+        uploadFile = shadowJar
+        versionType = upload_release_type.toUpperCase()
+        changelog = getChangelogFile().text
+        gameVersions = [minecraft_version]
+        loaders = [mod_loader]
+        dependencies {
+            modrinth_upload_optional_dependencies.forEach({
+                optional.project it
+            })
+        }
+        syncBodyFrom = file("${rootDir}/readme.md").text
+    }
+    tasks.modrinth.dependsOn(shadowJar)
+}
+
+// Mod Update
+if (enable_mod_update) {
+    modUpdate {
+        serverURL = 'https://update.maxhenkel.de/'
+        modID = mod_id
+        gameVersion = minecraft_version
+        modLoader = mod_loader
+        modVersion = mod_version
+        changelogFile = getChangelogFile()
+        releaseType = upload_release_type
+        tags = upload_recommended == 'true' ? ['recommended'] : []
+    }
+}
+
+// Utility functions
+/**
+ * Checks if a property exists or falls back to a default value.
+ *
+ * @param propertyName the name of the property to check
+ * @param defaultValue the default value if the property doesn't exists
+ * @param mutator mutates the return value (Only applied if the property exists)
+ * @return the property
+ */
+def <T> T getOrDefault(String propertyName, T defaultValue = null, Closure mutator = { it }) {
+    if (!hasProperty(propertyName)) {
+        return defaultValue
+    }
+    return mutator(getProperty(propertyName))
+}
+
+/**
+ * Throws an exception if a property doesn't exist.
+ *
+ * @param propertyName the name of the property to check
+ */
+def checkProperty(String propertyName) {
+    if (!hasProperty(propertyName)) {
+        throw new RuntimeException("No property '${propertyName}' defined")
+    }
+}
+
+def hasPlugin(String pluginName) {
+    return getPluginManager().hasPlugin(pluginName)
+}
+
+def checkPlugin(String pluginName) {
+    if (!hasPlugin(pluginName)) {
+        throw new RuntimeException("Missing plugin '${pluginName}'")
+    }
+}
+
+static def stringToStringList(String str) {
+    return str.split(',').collect({ it.trim() })
+}
+
+def getChangelogFile() {
+    return file('changelog.md').exists() ? file('changelog.md') : file("${rootDir}/changelog.md")
+}
