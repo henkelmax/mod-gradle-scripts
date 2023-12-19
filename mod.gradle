@@ -3,14 +3,17 @@ def MIN_GRADLE_VERSION = '8.5'
 def MAX_EXCLUDED_GRADLE_VERSION = '9'
 def FABRIC_MOD_LOADER = 'fabric'
 def NEOFORGE_MOD_LOADER = 'neoforge'
+def FORGE_MOD_LOADER = 'forge'
 
 def DEFAULT_JAVA_VERSION = '17'
 def DEFAULT_MOD_LOADER = FABRIC_MOD_LOADER
 def DEFAULT_MOD_AUTHOR = 'Max Henkel'
-def DEFAULT_FABRIC_LOADER_VERSION = '0.15.1'
-def DEFAULT_CONFIGBUILDER_VERSION = '2.0.1'
 def DEFAULT_RELEASE_TYPE = 'alpha'
 def DEFAULT_MINECRAFT_USER_NAME_PREFIX = 'henkelmax'
+
+def DEFAULT_CONFIGBUILDER_VERSION = '2.0.1'
+def DEFAULT_FABRIC_LOADER_VERSION = '0.15.1'
+def DEFAULT_MIXIN_ANNOTATION_PROCESSOR_VERSION = '0.8.4'
 
 // Gradle version checks
 def gradle_version = VersionNumber.parse(getProject().getGradle().getGradleVersion())
@@ -34,10 +37,11 @@ ext.java_version = getOrDefault('java_version', DEFAULT_JAVA_VERSION) as int
 ext.mod_loader = getOrDefault('mod_loader', DEFAULT_MOD_LOADER)
 ext.mod_authors = getOrDefault('mod_authors', [DEFAULT_MOD_AUTHOR], it -> stringToStringList(it))
 ext.minecraft_user_name_prefix = getOrDefault('minecraft_user_name_prefix', DEFAULT_MINECRAFT_USER_NAME_PREFIX)
-ext.use_mixins = getOrDefault('use_mixins', false, it -> it.toBoolean()) //TODO Maybe only for Forge/NeoForge, since they are INCLUDED?? by default from Fabric??
+ext.use_mixins = getOrDefault('use_mixins', false, it -> it.toBoolean()) //TODO Maybe only for Forge/NeoForge, since they are included by default from Fabric
 
 def is_fabric = mod_loader.equalsIgnoreCase(FABRIC_MOD_LOADER)
 def is_neoforge = mod_loader.equalsIgnoreCase(NEOFORGE_MOD_LOADER)
+def is_forge = mod_loader.equalsIgnoreCase(FORGE_MOD_LOADER)
 
 // Fabric specific variables
 if (is_fabric) {
@@ -54,6 +58,15 @@ if (is_fabric) {
 // Neoforge specific variables
 if (is_neoforge) {
     checkProperty('neoforge_version')
+}
+
+// Forge specific variables
+if (is_forge) {
+    checkProperty('forge_version')
+    ext.mixin_annotation_processor_version = getOrDefault('mixin_annotation_processor_version', DEFAULT_MIXIN_ANNOTATION_PROCESSOR_VERSION)
+    if (use_mixins) {
+        checkProperty('mixin_connector_path')
+    }
 }
 
 // Libraries
@@ -92,6 +105,12 @@ if (is_neoforge) {
     checkPlugin('net.neoforged.gradle.userdev')
     // Neoforge mixins
     checkPlugin('net.neoforged.gradle.mixin')
+}
+if (is_forge) {
+    // Forge gradle
+    checkPlugin('net.minecraftforge.gradle')
+    // Mixin
+    checkPlugin('org.spongepowered.mixin')
 }
 
 checkPlugin('com.github.johnrengelman.shadow')
@@ -153,6 +172,7 @@ if (is_neoforge) {
         }
         server {
             workingDirectory file('run/server')
+            programArguments = ['--nogui']
         }
     }
 
@@ -162,6 +182,45 @@ if (is_neoforge) {
         mixin {
             config "${mod_id}.mixins.json"
         }
+    }
+}
+
+// Forge run configuration
+if (is_forge) {
+    minecraft {
+        mappings channel: 'official', version: minecraft_version
+        copyIdeResources = true
+        runs {
+            configureEach {
+                property 'forge.logging.console.level', 'debug'
+            }
+            client {
+                workingDirectory file('run')
+                args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+            }
+            server {
+                workingDirectory file('run/server')
+                arg '--nogui'
+            }
+            data {
+                workingDirectory file('run')
+                args '--mod', mod_id, '--all', '--output', file('src/generated/resources/')
+            }
+        }
+    }
+
+    sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+    if (use_mixins) {
+        mixin {
+            add sourceSets.main, "${mod_id}.refmap.json"
+        }
+    }
+
+    sourceSets.each {
+        def dir = layout.buildDirectory.dir("sourcesSets/$it.name")
+        it.output.resourcesDir = dir
+        it.java.destinationDirectory = dir
     }
 }
 
@@ -198,12 +257,17 @@ dependencies {
         implementation "net.neoforged:neoforge:${neoforge_version}"
     }
 
+    if (is_forge) {
+        minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+        annotationProcessor "org.spongepowered:mixin:${mixin_annotation_processor_version}:processor"
+    }
+
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
 
     if (enable_configbuilder) {
         implementation "de.maxhenkel.configbuilder:configbuilder:${configbuilder_version}"
         shadow "de.maxhenkel.configbuilder:configbuilder:${configbuilder_version}"
-        if (is_neoforge) {
+        if (is_neoforge || is_forge) {
             minecraftLibrary "de.maxhenkel.configbuilder:configbuilder:${configbuilder_version}"
         }
     }
@@ -235,13 +299,30 @@ jar {
                         'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),])
         }
     }
+
+    if (is_forge) {
+        manifest {
+            attributes(['Specification-Title'     : mod_display_name,
+                        'Specification-Vendor'    : mod_authors.join(', '),
+                        'Specification-Version'   : '1',
+                        'Implementation-Title'    : mod_display_name,
+                        'Implementation-Version'  : mod_version,
+                        'Implementation-Vendor'   : mod_authors.join(', '),
+                        'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                        'MixinConnector'          : mixin_connector_path],)
+        }
+    }
 }
 jar.finalizedBy('shadowJar')
 
 shadowJar {
     configurations = [project.configurations.shadow]
-    archiveClassifier = 'shadow-dev' //TODO check
-    //archiveClassifier = ''
+    if (is_fabric) {
+        archiveClassifier = 'shadow-dev'
+    }
+    if (is_neoforge || is_forge) {
+        archiveClassifier = ''
+    }
     if (enable_configbuilder) {
         relocate 'de.maxhenkel.configbuilder', "de.maxhenkel.${mod_id}.configbuilder"
     }
@@ -251,6 +332,13 @@ if (is_fabric) {
     remapJar {
         dependsOn shadowJar
         inputFile = shadowJar.archiveFile.get()
+    }
+}
+
+if (is_forge) {
+    shadowJar.dependsOn('reobfJar')
+    reobf {
+        shadowJar {}
     }
 }
 
