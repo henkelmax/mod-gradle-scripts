@@ -383,6 +383,9 @@ if (enable_curseforge_upload) {
             if (is_neoforge) {
                 addGameVersion 'NeoForge'
             }
+            if (is_forge) {
+                addGameVersion 'Forge'
+            }
             addGameVersion "Java ${java_version}"
             mainArtifact(shadowJar) { //TODO Check if this works
                 //mainArtifact(file("${layout.buildDirectory.asFile.get()}/libs/${archivesBaseName}-${version}.jar")) {
