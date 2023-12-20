@@ -365,15 +365,20 @@ jar {
     }
 
     if (is_forge) {
+        def attrs = [
+                'Specification-Title'     : mod_display_name,
+                'Specification-Vendor'    : mod_authors.join(', '),
+                'Specification-Version'   : '1',
+                'Implementation-Title'    : mod_display_name,
+                'Implementation-Version'  : mod_version,
+                'Implementation-Vendor'   : mod_authors.join(', '),
+                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ]
+        if (use_mixins) {
+            attrs.put('MixinConnector', mixin_connector_path)
+        }
         manifest {
-            attributes(['Specification-Title'     : mod_display_name,
-                        'Specification-Vendor'    : mod_authors.join(', '),
-                        'Specification-Version'   : '1',
-                        'Implementation-Title'    : mod_display_name,
-                        'Implementation-Version'  : mod_version,
-                        'Implementation-Vendor'   : mod_authors.join(', '),
-                        'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-                        'MixinConnector'          : mixin_connector_path],)
+            attributes(attrs)
         }
     }
 }
