@@ -11,3 +11,11 @@ This script supports:
 
 
 Gradle version `8.5+` is required.
+
+## Usage
+
+In your mods `build.gradle` apply all needed plugins like **Shadow** and **Fabric Loom** and then add the following line:
+
+``` groovy
+apply from: "https://raw.githubusercontent.com/henkelmax/mod-gradle-scripts/${mod_gradle_script_version}/mod.gradle"
+```
