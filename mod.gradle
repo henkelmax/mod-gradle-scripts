@@ -68,7 +68,6 @@ if (is_fabric) {
 // Neoforge specific variables
 if (is_neoforge) {
     checkProperty('neoforge_version')
-    ext.enable_accesstransformers = getOrDefault('enable_accesstransformers', false, it -> it.toBoolean())
 }
 
 // Forge specific variables
@@ -78,6 +77,10 @@ if (is_forge) {
     if (use_mixins) {
         checkProperty('mixin_connector_path')
     }
+}
+
+if (is_neoforge || is_forge) {
+    ext.enable_accesstransformers = getOrDefault('enable_accesstransformers', false, it -> it.toBoolean())
 }
 
 // Libraries
