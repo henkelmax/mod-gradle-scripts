@@ -68,6 +68,7 @@ if (is_fabric) {
 // Neoforge specific variables
 if (is_neoforge) {
     checkProperty('neoforge_version')
+    ext.enable_accesstransformers = getOrDefault('enable_accesstransformers', false, it -> it.toBoolean())
 }
 
 // Forge specific variables
@@ -208,6 +209,10 @@ if (is_neoforge) {
             config "${mod_id}.mixins.json"
         }
     }
+
+    if (enable_accesstransformers) {
+        minecraft.accessTransformers.file rootProject.file('src/main/resources/META-INF/accesstransformer.cfg')
+    }
 }
 
 // Forge run configuration
@@ -215,6 +220,9 @@ if (is_forge) {
     minecraft {
         mappings channel: 'official', version: minecraft_version
         copyIdeResources = true
+        if (enable_accesstransformers) {
+            accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+        }
         runs {
             configureEach {
                 property 'forge.logging.console.level', 'debug'
