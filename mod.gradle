@@ -99,6 +99,7 @@ if (enable_curseforge_upload) {
     checkProperty('curseforge_upload_id')
     ext.curseforge_upload_minecraft_version = getOrDefault('curseforge_upload_minecraft_version', minecraft_version)
     ext.curseforge_upload_optional_dependencies = getOrDefault('curseforge_upload_optional_dependencies', [], it -> stringToStringList(it))
+    ext.curseforge_upload_required_dependencies = getOrDefault('curseforge_upload_required_dependencies', [], it -> stringToStringList(it))
 
     ext.curseforge_api_key = getOrDefault('curseforge_api_key', System.env.CURSEFORGE_API_KEY)
     if (curseforge_api_key == null || curseforge_api_key.isEmpty()) {
@@ -111,6 +112,7 @@ if (enable_modrinth_upload) {
     checkPlugin('com.modrinth.minotaur')
     checkProperty('modrinth_upload_id')
     ext.modrinth_upload_optional_dependencies = getOrDefault('modrinth_upload_optional_dependencies', [], it -> stringToStringList(it))
+    ext.modrinth_upload_required_dependencies = getOrDefault('modrinth_upload_required_dependencies', [], it -> stringToStringList(it))
     ext.modrinth_token = getOrDefault('modrinth_token', System.env.MODRINTH_TOKEN)
     if (modrinth_token == null || modrinth_token.isEmpty()) {
         throw new RuntimeException('Missing environment variable MODRINTH_TOKEN')
@@ -470,21 +472,19 @@ if (enable_curseforge_upload) {
                 addGameVersion 'Forge'
             }
             addGameVersion "Java ${java_version}"
-            mainArtifact(getUploadArtefact()) { //TODO Check if this works
-                //mainArtifact(file("${layout.buildDirectory.asFile.get()}/libs/${archivesBaseName}-${version}.jar")) {
+            mainArtifact(getUploadArtefact()) {
                 displayName = "[${mod_loader.toUpperCase()}][${minecraft_version}] ${mod_display_name} ${mod_version}"
-                if (curseforge_upload_optional_dependencies) {
+                if (curseforge_upload_optional_dependencies || curseforge_upload_required_dependencies) {
                     relations {
                         curseforge_upload_optional_dependencies.forEach({
                             optionalDependency it
                         })
+                        curseforge_upload_required_dependencies.forEach({
+                            requiredDependency it
+                        })
                     }
                 }
             }
-            //TODO Check if it works without that on Fabric
-            /*afterEvaluate {
-                uploadTask.dependsOn(remapJar)
-            }*/
         }
         options {
             forgeGradleIntegration = false
@@ -518,6 +518,9 @@ if (enable_modrinth_upload) {
         dependencies {
             modrinth_upload_optional_dependencies.forEach({
                 optional.project it
+            })
+            modrinth_upload_required_dependencies.forEach({
+                required.project it
             })
         }
         syncBodyFrom = file("${rootDir}/readme.md").text
