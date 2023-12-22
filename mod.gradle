@@ -185,8 +185,7 @@ if (is_fabric) {
 if (is_neoforge) {
     configurations {
         minecraftLibrary {}
-        // implementation.extendsFrom minecraftLibrary
-        minecraftLibrary.extendsFrom implementation
+        implementation.extendsFrom minecraftLibrary
     }
 
     runs {
