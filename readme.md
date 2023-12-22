@@ -6,6 +6,7 @@ This is intended to reduce the build script boilerplate in individual projects.
 This script supports:
 
 - Fabric Loom `1.4+`
+- Quilt Loom `1.4+`
 - NeoGradle `7.0+`
 - ForgeGradle `6.0+`
 

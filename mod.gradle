@@ -2,6 +2,7 @@
 def MIN_GRADLE_VERSION = '8.5'
 def MAX_EXCLUDED_GRADLE_VERSION = '9'
 def FABRIC_MOD_LOADER = 'fabric'
+def QUILT_MOD_LOADER = 'quilt'
 def NEOFORGE_MOD_LOADER = 'neoforge'
 def FORGE_MOD_LOADER = 'forge'
 def BUKKIT_LOADER = 'bukkit'
@@ -50,6 +51,7 @@ ext.included_projects = included_projects.findAll {
 }
 
 ext.is_fabric = mod_loader.equalsIgnoreCase(FABRIC_MOD_LOADER)
+ext.is_quilt = mod_loader.equalsIgnoreCase(QUILT_MOD_LOADER)
 ext.is_neoforge = mod_loader.equalsIgnoreCase(NEOFORGE_MOD_LOADER)
 ext.is_forge = mod_loader.equalsIgnoreCase(FORGE_MOD_LOADER)
 ext.is_bukkit = mod_loader.equalsIgnoreCase(BUKKIT_LOADER)
@@ -65,6 +67,13 @@ if (is_fabric) {
     // TODO Add access widener path to fabric.mod.json
     ext.enable_accesswideners = getOrDefault('enable_accesswideners', false, it -> it.toBoolean())
     ext.add_quilt_supported_tag = getOrDefault('add_quilt_supported_tag', true, it -> it.toBoolean())
+}
+
+// Quilt specific variables
+if (is_quilt) {
+    checkProperty('quilt_loader_version')
+    // TODO Add access widener path to quilt.mod.json
+    ext.enable_accesswideners = getOrDefault('enable_accesswideners', false, it -> it.toBoolean())
 }
 
 // Neoforge specific variables
@@ -163,6 +172,9 @@ if (enable_mod_update) {
 if (is_fabric) {
     checkPlugin('fabric-loom')
 }
+if (is_quilt) {
+    checkPlugin('org.quiltmc.loom')
+}
 if (is_neoforge) {
     // Neoforge gradle
     checkPlugin('net.neoforged.gradle.userdev')
@@ -211,6 +223,22 @@ if (is_fabric) {
             accessWidenerPath = accesswidenerFile
         }
     }
+}
+
+// Quilt run configuration
+if (is_quilt) {
+    runClient.doFirst {
+        args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+    }
+
+    // Access widener
+    // TODO Implement
+    /*def accesswidenerFile = file("src/main/resources/${mod_id}.accesswidener")
+    if (enable_accesswideners && accesswidenerFile.exists()) {
+        loom {
+            accessWidenerPath = accesswidenerFile
+        }
+    }*/
 }
 
 // Neoforge run configuration
@@ -325,6 +353,12 @@ dependencies {
         }
     }
 
+    if (is_quilt) {
+        minecraft "com.mojang:minecraft:${minecraft_version}"
+        mappings loom.officialMojangMappings()
+        modImplementation("org.quiltmc:quilt-loader:${quilt_loader_version}")
+    }
+
     if (is_neoforge) {
         implementation "net.neoforged:neoforge:${neoforge_version}"
     }
@@ -435,7 +469,7 @@ jar.finalizedBy('shadowJar')
 
 shadowJar {
     configurations = [project.configurations.shadow]
-    if (is_fabric) {
+    if (is_fabric || is_quilt) {
         archiveClassifier = 'shadow-dev'
     } else {
         archiveClassifier = ''
@@ -445,7 +479,7 @@ shadowJar {
     }
 }
 
-if (is_fabric) {
+if (is_fabric || is_quilt) {
     remapJar {
         dependsOn shadowJar
         inputFile = shadowJar.archiveFile.get()
@@ -499,6 +533,9 @@ if (enable_curseforge_upload) {
                 if (add_quilt_supported_tag) {
                     addGameVersion 'Quilt'
                 }
+            }
+            if (is_quilt) {
+                addGameVersion 'Quilt'
             }
             if (is_neoforge) {
                 addGameVersion 'NeoForge'
@@ -588,7 +625,10 @@ if (enable_modrinth_upload) {
                 required.project it
             })
         }
-        syncBodyFrom = file("${rootDir}/readme.md").text
+        def readmeFile = file("${rootDir}/readme.md")
+        if (readmeFile.exists()) {
+            syncBodyFrom = readmeFile.text
+        }
     }
     tasks.modrinth.dependsOn(shadowJar)
 }
@@ -688,5 +728,5 @@ def getChangelogFile() {
 }
 
 def getUploadArtefact() {
-    return is_fabric ? remapJar : shadowJar
+    return (is_fabric || is_quilt) ? remapJar : shadowJar
 }
