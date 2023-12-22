@@ -538,7 +538,7 @@ if (enable_curseforge_bukkit_upload) {
             changelogType = 'markdown'
             changelog = getChangelogFile()
             releaseType = upload_release_type
-            curseforge_bukkit_upload_minecraft_versions.split(',').collect({ it.trim() }).forEach {
+            curseforge_bukkit_upload_minecraft_versions.forEach {
                 addGameVersion it
             }
             mainArtifact(shadowJar) {
