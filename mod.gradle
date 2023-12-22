@@ -4,6 +4,7 @@ def MAX_EXCLUDED_GRADLE_VERSION = '9'
 def FABRIC_MOD_LOADER = 'fabric'
 def NEOFORGE_MOD_LOADER = 'neoforge'
 def FORGE_MOD_LOADER = 'forge'
+def BUKKIT_LOADER = 'bukkit'
 
 def DEFAULT_JAVA_VERSION = '17'
 def DEFAULT_MOD_LOADER = FABRIC_MOD_LOADER
@@ -51,6 +52,7 @@ ext.included_projects = included_projects.findAll {
 ext.is_fabric = mod_loader.equalsIgnoreCase(FABRIC_MOD_LOADER)
 ext.is_neoforge = mod_loader.equalsIgnoreCase(NEOFORGE_MOD_LOADER)
 ext.is_forge = mod_loader.equalsIgnoreCase(FORGE_MOD_LOADER)
+ext.is_bukkit = mod_loader.equalsIgnoreCase(BUKKIT_LOADER)
 
 // Fabric specific variables
 if (is_fabric) {
@@ -83,6 +85,10 @@ if (is_neoforge || is_forge) {
     ext.enable_accesstransformers = getOrDefault('enable_accesstransformers', false, it -> it.toBoolean())
 }
 
+if (is_bukkit) {
+    checkProperty('bukkit_version')
+}
+
 // Libraries
 ext.enable_configbuilder = getOrDefault('enable_configbuilder', false, it -> it.toBoolean())
 if (enable_configbuilder) {
@@ -100,7 +106,16 @@ if (enable_curseforge_upload) {
     ext.curseforge_upload_minecraft_version = getOrDefault('curseforge_upload_minecraft_version', minecraft_version)
     ext.curseforge_upload_optional_dependencies = getOrDefault('curseforge_upload_optional_dependencies', [], it -> stringToStringList(it))
     ext.curseforge_upload_required_dependencies = getOrDefault('curseforge_upload_required_dependencies', [], it -> stringToStringList(it))
-
+}
+// CurseForge Bukkit upload
+ext.enable_curseforge_bukkit_upload = getOrDefault('enable_curseforge_bukkit_upload', false, it -> it.toBoolean())
+if (enable_curseforge_upload) {
+    checkPlugin('info.u_team.curse_gradle_uploader')
+    checkProperty('curseforge_bukkit_upload_id')
+    ext.curseforge_bukkit_upload_minecraft_versions = getOrDefault('curseforge_bukkit_upload_minecraft_versions', [], it -> stringToStringList(it))
+}
+// Commons between CurseForge and CurseForge bukkit
+if (enable_curseforge_upload || enable_curseforge_bukkit_upload) {
     ext.curseforge_api_key = getOrDefault('curseforge_api_key', System.env.CURSEFORGE_API_KEY)
     if (curseforge_api_key == null || curseforge_api_key.isEmpty()) {
         throw new RuntimeException('Missing environment variable CURSEFORGE_API_KEY')
@@ -111,11 +126,28 @@ ext.enable_modrinth_upload = getOrDefault('enable_modrinth_upload', true, it -> 
 if (enable_modrinth_upload) {
     checkPlugin('com.modrinth.minotaur')
     checkProperty('modrinth_upload_id')
+    // This property is optional and falls back to the selected loader
+    ext.modrinth_upload_supported_loaders = getOrDefault('modrinth_upload_supported_loaders', [], it -> stringToStringList(it))
+    // This property is optional and falls back to the selected Minecraft version
+    ext.modrinth_upload_supported_game_versions = getOrDefault('modrinth_upload_supported_game_versions', [], it -> stringToStringList(it))
     ext.modrinth_upload_optional_dependencies = getOrDefault('modrinth_upload_optional_dependencies', [], it -> stringToStringList(it))
     ext.modrinth_upload_required_dependencies = getOrDefault('modrinth_upload_required_dependencies', [], it -> stringToStringList(it))
     ext.modrinth_token = getOrDefault('modrinth_token', System.env.MODRINTH_TOKEN)
     if (modrinth_token == null || modrinth_token.isEmpty()) {
         throw new RuntimeException('Missing environment variable MODRINTH_TOKEN')
+    }
+}
+// Hangar upload
+ext.enable_hangar_upload = getOrDefault('enable_hangar_upload', false, it -> it.toBoolean())
+if (enable_hangar_upload) {
+    checkPlugin('io.papermc.hangar-publish-plugin')
+    apply plugin: 'io.papermc.hangar-publish-plugin'
+    checkProperty('hangar_upload_id')
+    ext.hangar_upload_minecraft_versions = getOrDefault('hangar_upload_minecraft_versions', [], it -> stringToStringList(it))
+    ext.hangar_upload_dependencies = getOrDefault('hangar_upload_dependencies', [], it -> stringToStringList(it))
+    ext.hangar_api_key = getOrDefault('hangar_api_key', System.env.HANGAR_API_KEY)
+    if (hangar_api_key == null || hangar_api_key.isEmpty()) {
+        throw new RuntimeException('Missing environment variable HANGAR_API_KEY')
     }
 }
 // Mod update
@@ -270,6 +302,7 @@ repositories {
             includeGroup "maven.modrinth"
         }
     }
+    mavenLocal()
 }
 
 dependencies {
@@ -299,6 +332,10 @@ dependencies {
     if (is_forge) {
         minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
         annotationProcessor "org.spongepowered:mixin:${mixin_annotation_processor_version}:processor"
+    }
+
+    if (is_bukkit) {
+        implementation "org.bukkit:craftbukkit:${bukkit_version}"
     }
 
     included_projects.forEach({
@@ -400,8 +437,7 @@ shadowJar {
     configurations = [project.configurations.shadow]
     if (is_fabric) {
         archiveClassifier = 'shadow-dev'
-    }
-    if (is_neoforge || is_forge) {
+    } else {
         archiveClassifier = ''
     }
     if (enable_configbuilder) {
@@ -492,6 +528,28 @@ if (enable_curseforge_upload) {
     tasks.curseforge.dependsOn(shadowJar)
 }
 
+// CurseForge Bukkit upload
+if (enable_curseforge_bukkit_upload) {
+    curseforge {
+        apiBaseUrl = 'https://dev.bukkit.org'
+        apiKey = curseforge_api_key
+        project {
+            id = curseforge_bukkit_upload_id
+            changelogType = 'markdown'
+            changelog = getChangelogFile()
+            releaseType = upload_release_type
+            curseforge_bukkit_upload_minecraft_versions.split(',').collect({ it.trim() }).forEach {
+                addGameVersion it
+            }
+            mainArtifact(shadowJar) {
+                // TODO Don't hardcode
+                displayName = "[BUKKIT/SPIGOT/PAPER] ${mod_display_name} ${mod_version}"
+            }
+        }
+    }
+    tasks.curseforge.dependsOn(shadowJar)
+}
+
 // Modrinth Upload
 if (enable_modrinth_upload) {
     tasks.modrinth.configure({
@@ -509,8 +567,16 @@ if (enable_modrinth_upload) {
         uploadFile = getUploadArtefact()
         versionType = upload_release_type.toUpperCase()
         changelog = getChangelogFile().text
-        gameVersions = [minecraft_version]
-        loaders = [mod_loader]
+        if (modrinth_upload_supported_game_versions) {
+            gameVersions = modrinth_upload_supported_game_versions
+        } else {
+            gameVersions = [minecraft_version]
+        }
+        if (modrinth_upload_supported_loaders) {
+            loaders = modrinth_upload_supported_loaders
+        } else {
+            loaders = [mod_loader]
+        }
         if (is_fabric && add_quilt_supported_tag) {
             loaders.add('quilt')
         }
@@ -525,6 +591,35 @@ if (enable_modrinth_upload) {
         syncBodyFrom = file("${rootDir}/readme.md").text
     }
     tasks.modrinth.dependsOn(shadowJar)
+}
+
+// Hangar upload
+if (enable_hangar_upload) {
+    tasks.publishAllPublicationsToHangar.configure({
+        group = 'upload'
+    })
+    hangarPublish {
+        def changelogString = getChangelogFile().text
+        def releaseString = upload_release_type.capitalize()
+        publications.register('plugin') {
+            version.set(mod_version)
+            id.set(hangar_upload_id)
+            channel.set(releaseString)
+            changelog.set(changelogString)
+            apiKey.set(hangar_api_key)
+            platforms {
+                register('PAPER') {
+                    jar.set(getUploadArtefact())
+                    platformVersions.set(hangar_upload_minecraft_versions)
+                    hangar_upload_dependencies.forEach({
+                        dependencies.hangar(it)
+                    })
+                }
+            }
+        }
+    }
+    tasks.publishAllPublicationsToHangar.dependsOn(shadowJar)
+    tasks.publishPluginPublicationToHangar.dependsOn(shadowJar)
 }
 
 // Mod Update
