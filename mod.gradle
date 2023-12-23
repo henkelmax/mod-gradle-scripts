@@ -39,8 +39,11 @@ ext.java_version = getOrDefault('java_version', DEFAULT_JAVA_VERSION) as int
 ext.mod_loader = getOrDefault('mod_loader', DEFAULT_MOD_LOADER)
 ext.mod_authors = getOrDefault('mod_authors', [DEFAULT_MOD_AUTHOR], it -> stringToStringList(it))
 ext.minecraft_user_name_prefix = getOrDefault('minecraft_user_name_prefix', DEFAULT_MINECRAFT_USER_NAME_PREFIX)
+ext.include_mixins = getOrDefault('include_mixins', true, it -> it.toBoolean()) //TODO Maybe only for Forge/NeoForge, since they are included by default from Fabric
 ext.use_mixins = getOrDefault('use_mixins', false, it -> it.toBoolean()) //TODO Maybe only for Forge/NeoForge, since they are included by default from Fabric
 ext.included_projects = getOrDefault('included_projects', [], it -> stringToStringList(it))
+
+ext.use_shadow = getOrDefault('use_shadow', true, it -> it.toBoolean())
 
 ext.included_projects = included_projects.findAll {
     def p = findProject(it)
@@ -90,6 +93,9 @@ if (is_forge) {
     if (use_mixins) {
         checkProperty('mixin_connector_path')
     }
+    // Defaults to official mappings if not present
+    ext.forge_mappings_channel = getOrDefault('forge_mappings_channel', null)
+    ext.forge_mappings_version = getOrDefault('forge_mappings_version', null)
 }
 
 if (is_neoforge || is_forge) {
@@ -188,11 +194,15 @@ if (is_neoforge) {
 if (is_forge) {
     // Forge gradle
     checkPlugin('net.minecraftforge.gradle')
-    // Mixin
-    checkPlugin('org.spongepowered.mixin')
+    if (include_mixins) {
+        // Mixin
+        checkPlugin('org.spongepowered.mixin')
+    }
 }
 
-checkPlugin('com.github.johnrengelman.shadow')
+if (use_shadow) {
+    checkPlugin('com.github.johnrengelman.shadow')
+}
 
 apply plugin: 'java'
 apply plugin: 'idea'
@@ -204,15 +214,21 @@ idea {
     }
 }
 
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'idea'
+}
+
 def java_language_version = JavaLanguageVersion.of(java_version)
 sourceCompatibility = java_language_version
 targetCompatibility = java_language_version
 // Java 17 is the minimum required Java version of fabric-loom
-if (java_version >= 17) {
-    java.toolchain.languageVersion = java_language_version
-} else {
+//TODO Check
+//if (java_version >= 17) {
+java.toolchain.languageVersion = java_language_version
+/*} else {
     java.toolchain.languageVersion = JavaLanguageVersion.of(17)
-}
+}*/
 
 group = getOrDefault('maven_group', "de.maxhenkel.${mod_id.replaceAll('_', '')}")
 archivesBaseName = getOrDefault('archives_base_name', "${mod_id.replaceAll('_', '-')}-${mod_loader}")
@@ -291,7 +307,11 @@ if (is_neoforge) {
 // Forge run configuration
 if (is_forge) {
     minecraft {
-        mappings channel: 'official', version: minecraft_version
+        if (forge_mappings_channel == null || forge_mappings_version == null) {
+            mappings channel: 'official', version: minecraft_version
+        } else {
+            mappings channel: forge_mappings_channel, version: forge_mappings_version
+        }
         copyIdeResources = true
         if (enable_accesstransformers) {
             accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
@@ -378,7 +398,9 @@ dependencies {
 
     if (is_forge) {
         minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-        annotationProcessor "org.spongepowered:mixin:${mixin_annotation_processor_version}:processor"
+        if (include_mixins) {
+            annotationProcessor "org.spongepowered:mixin:${mixin_annotation_processor_version}:processor"
+        }
     }
 
     if (is_bukkit) {
@@ -392,13 +414,18 @@ dependencies {
             compileOnly(included_project) {
                 transitive false
             }
+            minecraftLibrary(included_project) {
+                transitive false
+            }
         } else {
             implementation(included_project) {
                 transitive false
             }
         }
-        shadow(included_project) {
-            transitive false
+        if (use_shadow) {
+            shadow(included_project) {
+                transitive false
+            }
         }
     })
 
@@ -406,7 +433,9 @@ dependencies {
 
     if (enable_configbuilder) {
         implementation "de.maxhenkel.configbuilder:configbuilder:${configbuilder_version}"
-        shadow "de.maxhenkel.configbuilder:configbuilder:${configbuilder_version}"
+        if (use_shadow) {
+            shadow "de.maxhenkel.configbuilder:configbuilder:${configbuilder_version}"
+        }
         if (is_neoforge || is_forge) {
             minecraftLibrary "de.maxhenkel.configbuilder:configbuilder:${configbuilder_version}"
         }
@@ -415,7 +444,9 @@ dependencies {
 
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = 'UTF-8'
-    it.options.release = java_version
+    if (java_version > 8) {
+        it.options.release = java_version
+    }
 
     if (!is_neoforge) {
         included_projects.forEach({
@@ -478,21 +509,25 @@ jar {
         }
     }
 }
-jar.finalizedBy('shadowJar')
+if (use_shadow) {
+    jar.finalizedBy('shadowJar')
+}
 
-shadowJar {
-    configurations = [project.configurations.shadow]
-    if (is_fabric || is_quilt) {
-        archiveClassifier = 'shadow-dev'
-    } else {
-        archiveClassifier = ''
-    }
-    if (enable_configbuilder) {
-        relocate 'de.maxhenkel.configbuilder', "de.maxhenkel.${mod_id}.configbuilder"
+if (use_shadow) {
+    shadowJar {
+        configurations = [project.configurations.shadow]
+        if (is_fabric || is_quilt) {
+            archiveClassifier = 'shadow-dev'
+        } else {
+            archiveClassifier = ''
+        }
+        if (enable_configbuilder) {
+            relocate 'de.maxhenkel.configbuilder', "de.maxhenkel.${mod_id}.configbuilder"
+        }
     }
 }
 
-if (is_fabric || is_quilt) {
+if (use_shadow && (is_fabric || is_quilt)) {
     remapJar {
         dependsOn shadowJar
         inputFile = shadowJar.archiveFile.get()
@@ -500,9 +535,11 @@ if (is_fabric || is_quilt) {
 }
 
 if (is_forge) {
-    shadowJar.dependsOn('reobfJar')
-    reobf {
-        shadowJar {}
+    if (use_shadow) {
+        shadowJar.dependsOn('reobfJar')
+        reobf {
+            shadowJar {}
+        }
     }
 }
 
@@ -579,7 +616,11 @@ if (enable_curseforge_upload) {
             forgeGradleIntegration = false
         }
     }
-    tasks.curseforge.dependsOn(shadowJar)
+    if (use_shadow) {
+        tasks.curseforge.dependsOn(shadowJar)
+    } else {
+        tasks.curseforge.dependsOn(jar)
+    }
 }
 
 // CurseForge Bukkit upload
@@ -595,13 +636,17 @@ if (enable_curseforge_bukkit_upload) {
             curseforge_bukkit_upload_minecraft_versions.forEach {
                 addGameVersion it
             }
-            mainArtifact(shadowJar) {
+            mainArtifact(getUploadArtefact()) {
                 // TODO Don't hardcode
                 displayName = "[BUKKIT/SPIGOT/PAPER] ${mod_display_name} ${mod_version}"
             }
         }
     }
-    tasks.curseforge.dependsOn(shadowJar)
+    if (use_shadow) {
+        tasks.curseforge.dependsOn(shadowJar)
+    } else {
+        tasks.curseforge.dependsOn(jar)
+    }
 }
 
 // Modrinth Upload
@@ -651,7 +696,11 @@ if (enable_modrinth_upload) {
             syncBodyFrom = readmeFile.text
         }
     }
-    tasks.modrinth.dependsOn(shadowJar)
+    if (use_shadow) {
+        tasks.modrinth.dependsOn(shadowJar)
+    } else {
+        tasks.modrinth.dependsOn(jar)
+    }
 }
 
 // Hangar upload
@@ -679,8 +728,14 @@ if (enable_hangar_upload) {
             }
         }
     }
-    tasks.publishAllPublicationsToHangar.dependsOn(shadowJar)
-    tasks.publishPluginPublicationToHangar.dependsOn(shadowJar)
+    if (use_shadow) {
+        tasks.publishAllPublicationsToHangar.dependsOn(shadowJar)
+        tasks.publishPluginPublicationToHangar.dependsOn(shadowJar)
+    } else {
+        tasks.publishAllPublicationsToHangar.dependsOn(jar)
+        tasks.publishPluginPublicationToHangar.dependsOn(jar)
+    }
+
 }
 
 // Mod Update
@@ -749,5 +804,5 @@ def getChangelogFile() {
 }
 
 def getUploadArtefact() {
-    return (is_fabric || is_quilt) ? remapJar : shadowJar
+    return (is_fabric || is_quilt) ? remapJar : (use_shadow ? shadowJar : jar)
 }
