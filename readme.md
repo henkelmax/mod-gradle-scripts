@@ -3,6 +3,10 @@
 This repository contains Gradle scripts that contain shared code between projects.
 This is intended to reduce the build script boilerplate in individual projects.
 
+## mod.gradle
+
+This script simplifies the configuration of a mod development environment including uploads to distribution platforms.
+
 This script supports:
 
 - Fabric Loom `1.4+`
@@ -13,10 +17,14 @@ This script supports:
 
 Gradle version `8.5+` is required.
 
-## Usage
+### Usage
 
 In your mods `build.gradle` apply all needed plugins like **Shadow** and **Fabric Loom** and then add the following line:
 
 ``` groovy
 apply from: "https://raw.githubusercontent.com/henkelmax/mod-gradle-scripts/${mod_gradle_script_version}/mod.gradle"
 ```
+
+## taskutils.gradle
+
+Utilities to run multiple tasks consecutively.
