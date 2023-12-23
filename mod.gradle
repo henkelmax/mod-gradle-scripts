@@ -67,6 +67,8 @@ if (is_fabric) {
     // TODO Add access widener path to fabric.mod.json
     ext.enable_accesswideners = getOrDefault('enable_accesswideners', false, it -> it.toBoolean())
     ext.add_quilt_supported_tag = getOrDefault('add_quilt_supported_tag', true, it -> it.toBoolean())
+    // Defaults to official mappings if not present
+    ext.fabric_mappings = getOrDefault('fabric_mappings', null)
 }
 
 // Quilt specific variables
@@ -343,7 +345,11 @@ repositories {
 dependencies {
     if (is_fabric) {
         minecraft "com.mojang:minecraft:${minecraft_version}"
-        mappings loom.officialMojangMappings()
+        if (fabric_mappings != null) {
+            mappings "${fabric_mappings}"
+        } else {
+            mappings loom.officialMojangMappings()
+        }
         modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
         // Fabric API
         if (project.hasProperty('fabric_api_version')) {
