@@ -205,7 +205,12 @@ idea {
 def java_language_version = JavaLanguageVersion.of(java_version)
 sourceCompatibility = java_language_version
 targetCompatibility = java_language_version
-java.toolchain.languageVersion = java_language_version
+// Java 17 is the minimum required Java version of fabric-loom
+if (java_version >= 17) {
+    java.toolchain.languageVersion = java_language_version
+} else {
+    java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+}
 
 group = getOrDefault('maven_group', "de.maxhenkel.${mod_id.replaceAll('_', '')}")
 archivesBaseName = getOrDefault('archives_base_name', "${mod_id.replaceAll('_', '-')}-${mod_loader}")
@@ -404,7 +409,7 @@ dependencies {
 
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = 'UTF-8'
-    it.options.release = 17
+    it.options.release = java_version
 
     if (!is_neoforge) {
         included_projects.forEach({
