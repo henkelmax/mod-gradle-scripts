@@ -112,6 +112,7 @@ ext.enable_curseforge_upload = getOrDefault('enable_curseforge_upload', true, it
 if (enable_curseforge_upload) {
     checkPlugin('com.matthewprenger.cursegradle')
     checkProperty('curseforge_upload_id')
+    ext.curseforge_upload_include_prefix = getOrDefault('curseforge_upload_include_prefix', true, it -> it.toBoolean())
     ext.curseforge_upload_minecraft_version = getOrDefault('curseforge_upload_minecraft_version', minecraft_version)
     ext.curseforge_upload_optional_dependencies = getOrDefault('curseforge_upload_optional_dependencies', [], it -> stringToStringList(it))
     ext.curseforge_upload_required_dependencies = getOrDefault('curseforge_upload_required_dependencies', [], it -> stringToStringList(it))
@@ -135,6 +136,7 @@ ext.enable_modrinth_upload = getOrDefault('enable_modrinth_upload', true, it -> 
 if (enable_modrinth_upload) {
     checkPlugin('com.modrinth.minotaur')
     checkProperty('modrinth_upload_id')
+    ext.modrinth_upload_include_prefix = getOrDefault('modrinth_upload_include_prefix', true, it -> it.toBoolean())
     // This property is optional and falls back to the selected loader
     ext.modrinth_upload_supported_loaders = getOrDefault('modrinth_upload_supported_loaders', [], it -> stringToStringList(it))
     // This property is optional and falls back to the selected Minecraft version
@@ -545,7 +547,11 @@ if (enable_curseforge_upload) {
             }
             addGameVersion "Java ${java_version}"
             mainArtifact(getUploadArtefact()) {
-                displayName = "[${mod_loader.toUpperCase()}][${minecraft_version}] ${mod_display_name} ${mod_version}"
+                if (curseforge_upload_include_prefix) {
+                    displayName = "[${mod_loader.toUpperCase()}][${minecraft_version}] ${mod_display_name} ${mod_version}"
+                } else {
+                    displayName = "${mod_display_name} ${mod_version}"
+                }
                 if (curseforge_upload_optional_dependencies || curseforge_upload_required_dependencies) {
                     relations {
                         curseforge_upload_optional_dependencies.forEach({
@@ -600,7 +606,11 @@ if (enable_modrinth_upload) {
         token = modrinth_token
         projectId = modrinth_upload_id
         versionNumber = "${mod_loader}-${mod_version}"
-        versionName = "[${mod_loader.toUpperCase()}][${minecraft_version}] ${mod_display_name} ${mod_version}"
+        if (modrinth_upload_include_prefix) {
+            versionName = "[${mod_loader.toUpperCase()}][${minecraft_version}] ${mod_display_name} ${mod_version}"
+        } else {
+            versionName = "${mod_display_name} ${mod_version}"
+        }
         uploadFile = getUploadArtefact()
         versionType = upload_release_type.toUpperCase()
         changelog = getChangelogFile().text
