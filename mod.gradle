@@ -222,13 +222,7 @@ subprojects {
 def java_language_version = JavaLanguageVersion.of(java_version)
 sourceCompatibility = java_language_version
 targetCompatibility = java_language_version
-// Java 17 is the minimum required Java version of fabric-loom
-//TODO Check
-//if (java_version >= 17) {
 java.toolchain.languageVersion = java_language_version
-/*} else {
-    java.toolchain.languageVersion = JavaLanguageVersion.of(17)
-}*/
 
 group = getOrDefault('maven_group', "de.maxhenkel.${mod_id.replaceAll('_', '')}")
 archivesBaseName = getOrDefault('archives_base_name', "${mod_id.replaceAll('_', '-')}-${mod_loader}")
@@ -410,17 +404,8 @@ dependencies {
     included_projects.forEach({
         def hasNamedElements = project(it).getConfigurations().findByName('namedElements') != null
         def included_project = hasNamedElements ? project(path: it, configuration: 'namedElements') : project(it)
-        if (is_neoforge || is_forge) {
-            compileOnly(included_project) {
-                transitive false
-            }
-            minecraftLibrary(included_project) {
-                transitive false
-            }
-        } else {
-            implementation(included_project) {
-                transitive false
-            }
+        implementation(included_project) {
+            transitive false
         }
         if (use_shadow) {
             shadow(included_project) {
@@ -479,6 +464,8 @@ jar {
     }
 
     // Manifest attributes
+
+    // This does not seem to be needed anymore with NeoForge, but we will still add it for now
     if (is_neoforge) {
         manifest {
             attributes(['Specification-Title'     : mod_display_name,
@@ -507,10 +494,8 @@ jar {
         manifest {
             attributes(attrs)
         }
+        finalizedBy 'reobfJar'
     }
-}
-if (use_shadow) {
-    jar.finalizedBy('shadowJar')
 }
 
 if (use_shadow) {
@@ -539,6 +524,16 @@ if (is_forge) {
         shadowJar.dependsOn('reobfJar')
         reobf {
             shadowJar {}
+        }
+    }
+}
+
+afterEvaluate {
+    // No idea why, but sometimes Gradle complains about a prepareWorkspace task
+    def prepareWorkspaceTask = tasks.findByName('prepareWorkspace')
+    if (prepareWorkspaceTask == null) {
+        tasks.register('prepareWorkspace') {
+
         }
     }
 }
