@@ -337,11 +337,12 @@ if (is_forge) {
         }
     }
 
-    sourceSets.each {
+    // This does not seem to be needed and causes issues with Forge 1.16.5
+    /*sourceSets.each {
         def dir = layout.buildDirectory.dir("sourcesSets/$it.name")
         it.output.resourcesDir = dir
         it.java.destinationDirectory = dir
-    }
+    }*/
 }
 
 // Dependency management
