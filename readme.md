@@ -3,7 +3,7 @@
 This repository contains Gradle scripts that contain shared code between projects.
 This is intended to reduce the build script boilerplate in individual projects.
 
-## mod.gradle
+## `mod.gradle`
 
 This script simplifies the configuration of a mod development environment including uploads to distribution platforms.
 
@@ -25,6 +25,6 @@ In your mods `build.gradle` apply all needed plugins like **Shadow** and **Fabri
 apply from: "https://raw.githubusercontent.com/henkelmax/mod-gradle-scripts/${mod_gradle_script_version}/mod.gradle"
 ```
 
-## taskutils.gradle
+## `taskutils.gradle`
 
 Utilities to run multiple tasks consecutively.
