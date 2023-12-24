@@ -93,6 +93,8 @@ if (is_forge) {
     if (use_mixins) {
         checkProperty('mixin_connector_path')
     }
+    // Merge the resources and classes into the same directory
+    ext.merge_files = getOrDefault('merge_files', true, it -> it.toBoolean())
     // Defaults to official mappings if not present
     ext.forge_mappings_channel = getOrDefault('forge_mappings_channel', null)
     ext.forge_mappings_version = getOrDefault('forge_mappings_version', null)
@@ -405,11 +407,15 @@ dependencies {
     included_projects.forEach({
         def hasNamedElements = project(it).getConfigurations().findByName('namedElements') != null
         def included_project = hasNamedElements ? project(path: it, configuration: 'namedElements') : project(it)
-        implementation(included_project) {
+        compileOnly(included_project) {
             transitive false
         }
         if (use_shadow) {
             shadow(included_project) {
+                transitive false
+            }
+        } else {
+            runtimeOnly(included_project) {
                 transitive false
             }
         }
@@ -525,6 +531,13 @@ if (is_forge) {
         shadowJar.dependsOn('reobfJar')
         reobf {
             shadowJar {}
+        }
+    }
+    if (merge_files) {
+        sourceSets.each {
+            def dir = layout.buildDirectory.dir("sourcesSets/$it.name")
+            it.output.resourcesDir = dir
+            it.java.destinationDirectory = dir
         }
     }
 }
