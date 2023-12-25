@@ -53,6 +53,13 @@ ext.included_projects = included_projects.findAll {
     return p != getProject()
 }
 
+// Libraries
+ext.enable_configbuilder = getOrDefault('enable_configbuilder', false, it -> it.toBoolean())
+if (enable_configbuilder) {
+    ext.configbuilder_version = getOrDefault('configbuilder_version', DEFAULT_CONFIGBUILDER_VERSION)
+}
+
+// Mod loaders
 ext.is_fabric = mod_loader.equalsIgnoreCase(FABRIC_MOD_LOADER)
 ext.is_quilt = mod_loader.equalsIgnoreCase(QUILT_MOD_LOADER)
 ext.is_neoforge = mod_loader.equalsIgnoreCase(NEOFORGE_MOD_LOADER)
@@ -64,7 +71,7 @@ if (is_fabric) {
     ext.fabric_loader_version = getOrDefault('fabric_loader_version', DEFAULT_FABRIC_LOADER_VERSION)
     ext.included_fabric_api_modules = getOrDefault('included_fabric_api_modules', [], it -> stringToStringList(it))
     ext.import_fabric_api = getOrDefault('import_fabric_api', false, it -> it.toBoolean())
-    if (import_fabric_api) {
+    if (import_fabric_api || included_fabric_api_modules) {
         checkProperty('fabric_api_version')
     }
     // TODO Add access widener path to fabric.mod.json
@@ -96,8 +103,8 @@ if (is_forge) {
     // Merge the resources and classes into the same directory
     ext.merge_files = getOrDefault('merge_files', true, it -> it.toBoolean())
     // Defaults to official mappings if not present
-    ext.forge_mappings_channel = getOrDefault('forge_mappings_channel', null)
-    ext.forge_mappings_version = getOrDefault('forge_mappings_version', null)
+    ext.forge_mappings_channel = getOrDefault('forge_mappings_channel', 'official')
+    ext.forge_mappings_version = getOrDefault('forge_mappings_version', minecraft_version)
 }
 
 if (is_neoforge || is_forge) {
@@ -106,12 +113,6 @@ if (is_neoforge || is_forge) {
 
 if (is_bukkit) {
     checkProperty('bukkit_version')
-}
-
-// Libraries
-ext.enable_configbuilder = getOrDefault('enable_configbuilder', false, it -> it.toBoolean())
-if (enable_configbuilder) {
-    ext.configbuilder_version = getOrDefault('configbuilder_version', DEFAULT_CONFIGBUILDER_VERSION)
 }
 
 // Upload
@@ -162,7 +163,6 @@ if (enable_modrinth_upload) {
 ext.enable_hangar_upload = getOrDefault('enable_hangar_upload', false, it -> it.toBoolean())
 if (enable_hangar_upload) {
     checkPlugin('io.papermc.hangar-publish-plugin')
-    apply plugin: 'io.papermc.hangar-publish-plugin'
     checkProperty('hangar_upload_id')
     ext.hangar_upload_minecraft_versions = getOrDefault('hangar_upload_minecraft_versions', [], it -> stringToStringList(it))
     ext.hangar_upload_dependencies = getOrDefault('hangar_upload_dependencies', [], it -> stringToStringList(it))
@@ -174,6 +174,7 @@ if (enable_hangar_upload) {
 // Mod update
 ext.enable_mod_update = getOrDefault('enable_mod_update', true, it -> it.toBoolean())
 if (enable_mod_update) {
+    checkPlugin('mod-update')
     ext.mod_update_api_key = getOrDefault('mod_update_api_key', System.env.MOD_UPDATE_API_KEY)
     if (mod_update_api_key == null || mod_update_api_key.isEmpty()) {
         throw new RuntimeException('Missing environment variable MOD_UPDATE_API_KEY')
@@ -303,11 +304,7 @@ if (is_neoforge) {
 // Forge run configuration
 if (is_forge) {
     minecraft {
-        if (forge_mappings_channel == null || forge_mappings_version == null) {
-            mappings channel: 'official', version: minecraft_version
-        } else {
-            mappings channel: forge_mappings_channel, version: forge_mappings_version
-        }
+        mappings channel: forge_mappings_channel, version: forge_mappings_version
         copyIdeResources = true
         if (enable_accesstransformers) {
             accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
@@ -369,17 +366,11 @@ dependencies {
         }
         modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
         // Fabric API
-        if (project.hasProperty('fabric_api_version')) {
-            included_fabric_api_modules.forEach {
-                include(modImplementation(fabricApi.module(it, fabric_api_version)))
-            }
-            if (import_fabric_api) {
-                modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
-            }
-        } else {
-            if (included_fabric_api_modules) {
-                throw new RuntimeException('Fabric API modules present but not Fabric API version defined')
-            }
+        included_fabric_api_modules.forEach {
+            include(modImplementation(fabricApi.module(it, fabric_api_version)))
+        }
+        if (import_fabric_api) {
+            modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
         }
     }
 
