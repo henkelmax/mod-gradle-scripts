@@ -452,10 +452,6 @@ processResources {
     })
 }
 
-java {
-    withSourcesJar()
-}
-
 jar {
     from('LICENSE') {
         rename { "${it}_${archivesBaseName}" }
