@@ -513,6 +513,12 @@ if (use_shadow && (is_fabric || is_quilt)) {
     }
 }
 
+if (is_neoforge) {
+    if (use_shadow) {
+        assemble.dependsOn('shadowJar')
+    }
+}
+
 if (is_forge) {
     if (use_shadow) {
         shadowJar.dependsOn('reobfJar')
