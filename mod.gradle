@@ -137,9 +137,9 @@ if (enable_curseforge_bukkit_upload) {
 }
 // Commons between CurseForge and CurseForge bukkit
 if (enable_curseforge_upload || enable_curseforge_bukkit_upload) {
-    ext.curseforge_api_key = getOrDefault('curseforge_api_key', System.env.CURSEFORGE_API_KEY)
+    ext.curseforge_api_key = getOrDefault('curseforge_api_key', System.env.CURSEFORGE_API_KEY ?: '')
     if (curseforge_api_key == null || curseforge_api_key.isEmpty()) {
-        throw new RuntimeException('Missing environment variable CURSEFORGE_API_KEY')
+        project.logger.error('Missing environment variable CURSEFORGE_API_KEY')
     }
 }
 // Modrinth upload
@@ -154,9 +154,9 @@ if (enable_modrinth_upload) {
     ext.modrinth_upload_supported_game_versions = getOrDefault('modrinth_upload_supported_game_versions', [], it -> stringToStringList(it))
     ext.modrinth_upload_optional_dependencies = getOrDefault('modrinth_upload_optional_dependencies', [], it -> stringToStringList(it))
     ext.modrinth_upload_required_dependencies = getOrDefault('modrinth_upload_required_dependencies', [], it -> stringToStringList(it))
-    ext.modrinth_token = getOrDefault('modrinth_token', System.env.MODRINTH_TOKEN)
+    ext.modrinth_token = getOrDefault('modrinth_token', System.env.MODRINTH_TOKEN ?: '')
     if (modrinth_token == null || modrinth_token.isEmpty()) {
-        throw new RuntimeException('Missing environment variable MODRINTH_TOKEN')
+        project.logger.error('Missing environment variable MODRINTH_TOKEN')
     }
 }
 // Hangar upload
@@ -166,18 +166,18 @@ if (enable_hangar_upload) {
     checkProperty('hangar_upload_id')
     ext.hangar_upload_minecraft_versions = getOrDefault('hangar_upload_minecraft_versions', [], it -> stringToStringList(it))
     ext.hangar_upload_dependencies = getOrDefault('hangar_upload_dependencies', [], it -> stringToStringList(it))
-    ext.hangar_api_key = getOrDefault('hangar_api_key', System.env.HANGAR_API_KEY)
+    ext.hangar_api_key = getOrDefault('hangar_api_key', System.env.HANGAR_API_KEY ?: '')
     if (hangar_api_key == null || hangar_api_key.isEmpty()) {
-        throw new RuntimeException('Missing environment variable HANGAR_API_KEY')
+        project.logger.error('Missing environment variable HANGAR_API_KEY')
     }
 }
 // Mod update
 ext.enable_mod_update = getOrDefault('enable_mod_update', true, it -> it.toBoolean())
 if (enable_mod_update) {
     checkPlugin('mod-update')
-    ext.mod_update_api_key = getOrDefault('mod_update_api_key', System.env.MOD_UPDATE_API_KEY)
+    ext.mod_update_api_key = getOrDefault('mod_update_api_key', System.env.MOD_UPDATE_API_KEY ?: '')
     if (mod_update_api_key == null || mod_update_api_key.isEmpty()) {
-        throw new RuntimeException('Missing environment variable MOD_UPDATE_API_KEY')
+        project.logger.error('Missing environment variable MOD_UPDATE_API_KEY')
     }
 }
 
