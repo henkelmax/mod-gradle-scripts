@@ -710,26 +710,32 @@ if (enable_hangar_upload) {
     tasks.publishAllPublicationsToHangar.configure({
         group = 'upload'
     })
+
     hangarPublish {
         def changelogString = getChangelogFile().text
         def releaseString = upload_release_type.capitalize()
         publications.register('plugin') {
-            version.set(mod_version)
-            id.set(hangar_upload_id)
-            channel.set(releaseString)
-            changelog.set(changelogString)
-            apiKey.set(hangar_api_key)
+            version = mod_version
+            id = hangar_upload_id
+            channel = releaseString
+            changelog = changelogString
+            apiKey = hangar_api_key
             platforms {
-                register('PAPER') {
-                    jar.set(getUploadArtefact())
-                    platformVersions.set(hangar_upload_minecraft_versions)
-                    hangar_upload_dependencies.forEach({
-                        dependencies.hangar(it)
-                    })
+                paper {
+                    jar = getUploadArtefact().archiveFile
+                    platformVersions = hangar_upload_minecraft_versions
+                    dependencies {
+                        hangar_upload_dependencies.forEach({
+                            hangar(it) {
+                                required = false
+                            }
+                        })
+                    }
                 }
             }
         }
     }
+
     if (use_shadow) {
         tasks.publishAllPublicationsToHangar.dependsOn(shadowJar)
         tasks.publishPluginPublicationToHangar.dependsOn(shadowJar)
