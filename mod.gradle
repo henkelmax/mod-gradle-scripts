@@ -181,6 +181,11 @@ if (enable_mod_update) {
     }
 }
 
+// Mark the evaluation depending on all included projects, so its evaluated after them
+included_projects.forEach({
+    evaluationDependsOn(it)
+})
+
 // Checking if mandatory plugins exist
 if (is_fabric) {
     checkPlugin('fabric-loom')
