@@ -711,7 +711,8 @@ if (enable_modrinth_upload) {
 }
 
 // Hangar upload
-if (enable_hangar_upload) {
+// TODO Fix hangar upload
+/*if (enable_hangar_upload) {
     tasks.publishAllPublicationsToHangar.configure({
         group = 'upload'
     })
@@ -749,7 +750,7 @@ if (enable_hangar_upload) {
         tasks.publishPluginPublicationToHangar.dependsOn(jar)
     }
 
-}
+}*/
 
 // Mod Update
 if (enable_mod_update) {
