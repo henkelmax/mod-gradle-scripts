@@ -165,6 +165,7 @@ if (enable_hangar_upload) {
     checkPlugin('io.papermc.hangar-publish-plugin')
     checkProperty('hangar_upload_id')
     ext.hangar_upload_minecraft_versions = getOrDefault('hangar_upload_minecraft_versions', [], it -> stringToStringList(it))
+    ext.hangar_upload_supported_loaders = getOrDefault('hangar_upload_supported_loaders', ['PAPER'], it -> stringToStringList(it))
     ext.hangar_upload_dependencies = getOrDefault('hangar_upload_dependencies', [], it -> stringToStringList(it))
     ext.hangar_api_key = getOrDefault('hangar_api_key', System.env.HANGAR_API_KEY ?: '')
     if (hangar_api_key == null || hangar_api_key.isEmpty()) {
@@ -711,8 +712,7 @@ if (enable_modrinth_upload) {
 }
 
 // Hangar upload
-// TODO Fix hangar upload
-/*if (enable_hangar_upload) {
+if (enable_hangar_upload) {
     tasks.publishAllPublicationsToHangar.configure({
         group = 'upload'
     })
@@ -721,23 +721,26 @@ if (enable_modrinth_upload) {
         def changelogString = getChangelogFile().text
         def releaseString = upload_release_type.capitalize()
         publications.register('plugin') {
-            version = mod_version
+            version = "${mod_loader}-${mod_version}"
             id = hangar_upload_id
             channel = releaseString
             changelog = changelogString
             apiKey = hangar_api_key
             platforms {
-                paper {
-                    jar = getUploadArtefact().archiveFile
-                    platformVersions = hangar_upload_minecraft_versions
-                    dependencies {
-                        hangar_upload_dependencies.forEach({
-                            hangar(it) {
-                                required = false
-                            }
-                        })
+                hangar_upload_supported_loaders.forEach({
+                    register(it) {
+                        jar = getUploadArtefact().archiveFile
+                        platformVersions = hangar_upload_minecraft_versions
+                        dependencies {
+                            hangar_upload_dependencies.forEach({
+                                hangar(it) {
+                                    required = false
+                                }
+                            })
+                        }
                     }
-                }
+                })
+
             }
         }
     }
@@ -750,7 +753,7 @@ if (enable_modrinth_upload) {
         tasks.publishPluginPublicationToHangar.dependsOn(jar)
     }
 
-}*/
+}
 
 // Mod Update
 if (enable_mod_update) {

@@ -168,11 +168,12 @@ You need to set the `HANGAR_API_KEY` environment variable to be able to upload p
 
 The Gradle plugin `io.papermc.hangar-publish-plugin` needs to applied before applying this script.
 
-| Property                           | Description                                     | Type                          | Default Value                      | Possible Values | Example                       |
-| ---------------------------------- | ----------------------------------------------- | ----------------------------- | ---------------------------------- | --------------- | ----------------------------- |
-| `hangar_upload_id`                 | The ID of the Hangar project                    | `String`                      | *This field is required to be set* |                 | `ExampleProject`              |
-| `hangar_upload_minecraft_versions` | The supported Minecraft versions for the upload | Comma separated `String` list | *Empty list*                       |                 | `1.20.3, 1.20.4`              |
-| `hangar_upload_dependencies`       | The plugin dependencies                         | Comma separated `String` list | *Empty list*                       |                 | `SimpleVoiceChat, ViaVersion` |
+| Property                           | Description                                     | Type                          | Default Value                      | Possible Values                  | Example                       |
+| ---------------------------------- | ----------------------------------------------- | ----------------------------- | ---------------------------------- | -------------------------------- | ----------------------------- |
+| `hangar_upload_id`                 | The ID of the Hangar project                    | `String`                      | *This field is required to be set* |                                  | `ExampleProject`              |
+| `hangar_upload_minecraft_versions` | The supported Minecraft versions for the upload | Comma separated `String` list | *Empty list*                       |                                  | `1.20.3, 1.20.4`              |
+| `hangar_upload_supported_loaders`  | The supported loaders                           | Comma separated `String` list | *Empty list*                       | `PAPER`, `VELOCITY`, `WATERFALL` | `PAPER, VELOCITY`              |
+| `hangar_upload_dependencies`       | The plugin dependencies                         | Comma separated `String` list | *Empty list*                       |                                  | `SimpleVoiceChat, ViaVersion` |
 
 
 **If `enable_mod_update` is active**
