@@ -494,7 +494,9 @@ jar {
         manifest {
             attributes(attrs)
         }
-        finalizedBy 'reobfJar'
+        if (tasks.findByName('reobfJar')) {
+            finalizedBy 'reobfJar'
+        }
     }
 }
 
@@ -527,9 +529,13 @@ if (is_neoforge) {
 
 if (is_forge) {
     if (use_shadow) {
-        shadowJar.dependsOn('reobfJar')
-        reobf {
-            shadowJar {}
+        if (tasks.findByName('reobfJar')) {
+            shadowJar.dependsOn('reobfJar')
+            reobf {
+                shadowJar {}
+            }
+        } else {
+            assemble.dependsOn('shadowJar')
         }
     }
     if (merge_files) {
