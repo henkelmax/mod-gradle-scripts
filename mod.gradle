@@ -303,7 +303,7 @@ if (is_neoforge) {
     }
 
     if (enable_accesstransformers) {
-        minecraft.accessTransformers.file rootProject.file('src/main/resources/META-INF/accesstransformer.cfg')
+        minecraft.accessTransformers.file file('src/main/resources/META-INF/accesstransformer.cfg')
     }
 }
 
