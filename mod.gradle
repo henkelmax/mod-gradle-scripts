@@ -444,14 +444,6 @@ tasks.withType(JavaCompile).configureEach {
     }
 }
 
-if (is_neoforge) {
-    tasks.withType(JavaCompile).matching(it -> !it.name.startsWith("neo")).configureEach {
-        included_projects.forEach({
-            source(project(it).sourceSets.main.allSource)
-        })
-    }
-}
-
 processResources {
     included_projects.forEach({
         from("${project(it).projectDir}/src/main/resources")
