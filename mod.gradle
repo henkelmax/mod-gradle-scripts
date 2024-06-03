@@ -486,7 +486,7 @@ jar {
         manifest {
             attributes(attrs)
         }
-        if (tasks.findByName('reobfJar')) {
+        if (minecraft.reobf) {
             finalizedBy 'reobfJar'
         }
     }
@@ -521,7 +521,7 @@ if (is_neoforge) {
 
 if (is_forge) {
     if (use_shadow) {
-        if (tasks.findByName('reobfJar')) {
+        if (minecraft.reobf) {
             shadowJar.dependsOn('reobfJar')
             reobf {
                 shadowJar {}
