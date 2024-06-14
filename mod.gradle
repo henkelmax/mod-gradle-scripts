@@ -105,6 +105,10 @@ if (is_forge) {
     // Defaults to official mappings if not present
     ext.forge_mappings_channel = getOrDefault('forge_mappings_channel', 'official')
     ext.forge_mappings_version = getOrDefault('forge_mappings_version', minecraft_version)
+    ext.reobfuscate = getOrDefault('reobfuscate', true, it -> it.toBoolean())
+    if (!reobfuscate) {
+        minecraft.reobf = false
+    }
 }
 
 if (is_neoforge || is_forge) {

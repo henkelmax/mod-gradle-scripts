@@ -97,6 +97,7 @@ Additionally the plugin `org.spongepowered.mixin` needs to be applied if `includ
 | `forge_mappings_channel`             | The mappings channel                                                                    | `String`  | `official`                               |                 |                                          |
 | `forge_mappings_version`             | The mappings version                                                                    | `String`  | The `minecraft_version` that was defined |                 |                                          |
 | `enable_accesstransformers`          | If access transformers should be enabled. Uses `META-INF/accesstransformer.cfg` as path | `boolean` | `false`                                  |                 |                                          |
+| `reobfuscate`                        | Whether to reobfuscate the mod (Set this to `false` starting with `1.20.5`)             | `boolean` | `true`                                   |                 |                                          |
 
 
 **If `mod_loader` `bukkit` is used**
@@ -172,7 +173,7 @@ The Gradle plugin `io.papermc.hangar-publish-plugin` needs to applied before app
 | ---------------------------------- | ----------------------------------------------- | ----------------------------- | ---------------------------------- | -------------------------------- | ----------------------------- |
 | `hangar_upload_id`                 | The ID of the Hangar project                    | `String`                      | *This field is required to be set* |                                  | `ExampleProject`              |
 | `hangar_upload_minecraft_versions` | The supported Minecraft versions for the upload | Comma separated `String` list | *Empty list*                       |                                  | `1.20.3, 1.20.4`              |
-| `hangar_upload_supported_loaders`  | The supported loaders                           | Comma separated `String` list | *Empty list*                       | `PAPER`, `VELOCITY`, `WATERFALL` | `PAPER, VELOCITY`              |
+| `hangar_upload_supported_loaders`  | The supported loaders                           | Comma separated `String` list | *Empty list*                       | `PAPER`, `VELOCITY`, `WATERFALL` | `PAPER, VELOCITY`             |
 | `hangar_upload_dependencies`       | The plugin dependencies                         | Comma separated `String` list | *Empty list*                       |                                  | `SimpleVoiceChat, ViaVersion` |
 
 
