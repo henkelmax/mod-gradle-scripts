@@ -97,9 +97,6 @@ if (is_neoforge) {
 if (is_forge) {
     checkProperty('forge_version')
     ext.mixin_annotation_processor_version = getOrDefault('mixin_annotation_processor_version', DEFAULT_MIXIN_ANNOTATION_PROCESSOR_VERSION)
-    if (use_mixins) {
-        checkProperty('mixin_connector_path')
-    }
     // Merge the resources and classes into the same directory
     ext.merge_files = getOrDefault('merge_files', true, it -> it.toBoolean())
     // Defaults to official mappings if not present
@@ -492,8 +489,10 @@ jar {
                 'Implementation-Vendor'   : mod_authors.join(', '),
                 'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ]
-        if (use_mixins) {
+        if (project.hasProperty('mixin_connector_path')) {
             attrs.put('MixinConnector', mixin_connector_path)
+        } else if (use_mixins) {
+            attrs.put('MixinConfigs', "${mod_id}.mixins.json")
         }
         manifest {
             attributes(attrs)
