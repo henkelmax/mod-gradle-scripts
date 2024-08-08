@@ -125,7 +125,7 @@ if (enable_curseforge_upload) {
     checkPlugin('com.matthewprenger.cursegradle')
     checkProperty('curseforge_upload_id')
     ext.curseforge_upload_include_prefix = getOrDefault('curseforge_upload_include_prefix', true, it -> it.toBoolean())
-    ext.curseforge_upload_minecraft_version = getOrDefault('curseforge_upload_minecraft_version', minecraft_version)
+    ext.curseforge_upload_minecraft_versions = getOrDefault('curseforge_upload_minecraft_versions', [], it -> stringToStringList(it))
     ext.curseforge_upload_optional_dependencies = getOrDefault('curseforge_upload_optional_dependencies', [], it -> stringToStringList(it))
     ext.curseforge_upload_required_dependencies = getOrDefault('curseforge_upload_required_dependencies', [], it -> stringToStringList(it))
 }
@@ -587,6 +587,12 @@ if (is_neoforge) {
 
 // CurseForge Upload
 if (enable_curseforge_upload) {
+    def curse_game_versions
+    if (curseforge_upload_minecraft_versions) {
+        curse_game_versions = curseforge_upload_minecraft_versions
+    } else {
+        curse_game_versions = [minecraft_version]
+    }
     curseforge {
         apiKey = curseforge_api_key
         project {
@@ -594,7 +600,9 @@ if (enable_curseforge_upload) {
             changelogType = 'markdown'
             changelog = getChangelogFile()
             releaseType = upload_release_type
-            addGameVersion curseforge_upload_minecraft_version
+            curse_game_versions.forEach {
+                addGameVersion it
+            }
             if (is_fabric) {
                 addGameVersion 'Fabric'
                 if (add_quilt_supported_tag) {

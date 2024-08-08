@@ -126,13 +126,13 @@ You need to set the `CURSEFORGE_API_KEY` environment variable to be able to uplo
 
 The Gradle plugin `com.matthewprenger.cursegradle` needs to applied before applying this script.
 
-| Property                                  | Description                                                                                       | Type                          | Default Value                            | Possible Values | Example     |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------- | --------------- | ----------- |
-| `curseforge_upload_id`                    | The ID of the CurseForge project                                                                  | `String`                      | *This field is required to be set*       |                 | `123456`    |
-| `curseforge_upload_include_prefix`        | If the file name of the upload should include a prefix with the loader name and Minecraft version | `boolean`                     | `true`                                   |                 |             |
-| `curseforge_upload_minecraft_version`     | The Minecraft version for the upload                                                              | `String`                      | The `minecraft_version` that was defined |                 | `1.20.4`    |
-| `curseforge_upload_optional_dependencies` | Optional mod dependencies                                                                         | Comma separated `String` list | *Empty list*                             |                 | `jei, jade` |
-| `curseforge_upload_required_dependencies` | Required mod dependencies                                                                         | Comma separated `String` list | *Empty list*                             |                 | `jei, jade` |
+| Property                                  | Description                                                                                       | Type                          | Default Value                            | Possible Values | Example            |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------- | --------------- | ------------------ |
+| `curseforge_upload_id`                    | The ID of the CurseForge project                                                                  | `String`                      | *This field is required to be set*       |                 | `123456`           |
+| `curseforge_upload_include_prefix`        | If the file name of the upload should include a prefix with the loader name and Minecraft version | `boolean`                     | `true`                                   |                 |                    |
+| `curseforge_upload_minecraft_versions`    | The supported Minecraft versions for the upload                                                   | Comma separated `String` list | The `minecraft_version` that was defined |                 | `1.20.3`, `1.20.4` |
+| `curseforge_upload_optional_dependencies` | Optional mod dependencies                                                                         | Comma separated `String` list | *Empty list*                             |                 | `jei, jade`        |
+| `curseforge_upload_required_dependencies` | Required mod dependencies                                                                         | Comma separated `String` list | *Empty list*                             |                 | `jei, jade`        |
 
 
 **If `enable_curseforge_bukkit_upload` is active**
