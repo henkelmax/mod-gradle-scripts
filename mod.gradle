@@ -287,11 +287,11 @@ if (is_neoforge) {
         }
         client {
             workingDirectory file('run')
-            programArguments = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+            arguments = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
         }
         server {
             workingDirectory file('run/server')
-            programArguments = ['--nogui']
+            arguments = ['--nogui']
         }
     }
 
