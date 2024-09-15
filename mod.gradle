@@ -232,7 +232,6 @@ subprojects {
 def java_language_version = JavaLanguageVersion.of(java_version)
 sourceCompatibility = java_language_version
 targetCompatibility = java_language_version
-java.toolchain.languageVersion = java_language_version
 
 group = getOrDefault('maven_group', "de.maxhenkel.${mod_id.replaceAll('_', '')}")
 archivesBaseName = getOrDefault('archives_base_name', "${mod_id.replaceAll('_', '-')}-${mod_loader}")
