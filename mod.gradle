@@ -233,6 +233,10 @@ def java_language_version = JavaLanguageVersion.of(java_version)
 sourceCompatibility = java_language_version
 targetCompatibility = java_language_version
 
+if (hasProperty('java_toolchain_version')) {
+    java.toolchain.languageVersion = JavaLanguageVersion.of(getProperty('java_toolchain_version') as int)
+}
+
 group = getOrDefault('maven_group', "de.maxhenkel.${mod_id.replaceAll('_', '')}")
 archivesBaseName = getOrDefault('archives_base_name', "${mod_id.replaceAll('_', '-')}-${mod_loader}")
 version = mod_version
