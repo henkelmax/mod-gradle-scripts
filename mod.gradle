@@ -39,6 +39,7 @@ ext.java_version = getOrDefault('java_version', DEFAULT_JAVA_VERSION) as int
 ext.mod_loader = getOrDefault('mod_loader', DEFAULT_MOD_LOADER)
 ext.mod_authors = getOrDefault('mod_authors', [DEFAULT_MOD_AUTHOR], it -> stringToStringList(it))
 ext.minecraft_user_name_prefix = getOrDefault('minecraft_user_name_prefix', DEFAULT_MINECRAFT_USER_NAME_PREFIX)
+ext.random_minecraft_user_name = getOrDefault('random_minecraft_user_name', true, it -> it.toBoolean())
 ext.include_mixins = getOrDefault('include_mixins', true, it -> it.toBoolean()) //TODO Maybe only for Forge/NeoForge, since they are included by default from Fabric
 ext.use_mixins = getOrDefault('use_mixins', false, it -> it.toBoolean()) //TODO Maybe only for Forge/NeoForge, since they are included by default from Fabric
 ext.included_projects = getOrDefault('included_projects', [], it -> stringToStringList(it))
@@ -244,9 +245,16 @@ version = mod_version
 // Run configurations
 // Fabric run configuration
 if (is_fabric) {
-    runClient.doFirst {
-        args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+    if (random_minecraft_user_name) {
+        runClient.doFirst {
+            args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+        }
+    } else {
+        runClient.doFirst {
+            args = ['--username', "${minecraft_user_name_prefix}"]
+        }
     }
+
 
     // Access widener
     def accesswidenerFile = file("src/main/resources/${mod_id}.accesswidener")
@@ -259,8 +267,14 @@ if (is_fabric) {
 
 // Quilt run configuration
 if (is_quilt) {
-    runClient.doFirst {
-        args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+    if (random_minecraft_user_name) {
+        runClient.doFirst {
+            args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+        }
+    } else {
+        runClient.doFirst {
+            args = ['--username', "${minecraft_user_name_prefix}"]
+        }
     }
 
     // Access widener
@@ -290,7 +304,11 @@ if (is_neoforge) {
         }
         client {
             workingDirectory file('run')
-            arguments = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+            if (random_minecraft_user_name) {
+                arguments = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+            } else {
+                arguments = ['--username', "${minecraft_user_name_prefix}"]
+            }
         }
         server {
             workingDirectory file('run/server')
@@ -325,7 +343,11 @@ if (is_forge) {
             }
             client {
                 workingDirectory file('run')
-                args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+                if (random_minecraft_user_name) {
+                    args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+                } else {
+                    args = ['--username', "${minecraft_user_name_prefix}"]
+                }
             }
             server {
                 workingDirectory file('run/server')
