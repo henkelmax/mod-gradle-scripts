@@ -80,6 +80,7 @@ if (is_fabric) {
     ext.add_quilt_supported_tag = getOrDefault('add_quilt_supported_tag', true, it -> it.toBoolean())
     // Defaults to official mappings if not present
     ext.fabric_mappings = getOrDefault('fabric_mappings', null)
+    ext.parchment_mappings = getOrDefault('parchment_mappings', null)
 }
 
 // Quilt specific variables
@@ -385,6 +386,9 @@ repositories {
             includeGroup "maven.modrinth"
         }
     }
+    if (is_fabric) {
+        maven { url = 'https://maven.parchmentmc.org/' }
+    }
     mavenLocal()
 }
 
@@ -394,7 +398,15 @@ dependencies {
         if (fabric_mappings != null) {
             mappings "${fabric_mappings}"
         } else {
-            mappings loom.officialMojangMappings()
+            if (parchment_mappings != null) {
+                mappings loom.layered() {
+                    officialMojangMappings()
+                    parchment("org.parchmentmc.data:${parchment_mappings}@zip")
+                }
+            } else {
+                mappings loom.officialMojangMappings()
+            }
+
         }
         modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
         // Fabric API
