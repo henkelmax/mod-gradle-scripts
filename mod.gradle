@@ -6,6 +6,7 @@ def QUILT_MOD_LOADER = 'quilt'
 def NEOFORGE_MOD_LOADER = 'neoforge'
 def FORGE_MOD_LOADER = 'forge'
 def BUKKIT_LOADER = 'bukkit'
+def PAPER_LOADER = 'paper'
 
 def DEFAULT_JAVA_VERSION = '17'
 def DEFAULT_MOD_LOADER = FABRIC_MOD_LOADER
@@ -66,6 +67,7 @@ ext.is_quilt = mod_loader.equalsIgnoreCase(QUILT_MOD_LOADER)
 ext.is_neoforge = mod_loader.equalsIgnoreCase(NEOFORGE_MOD_LOADER)
 ext.is_forge = mod_loader.equalsIgnoreCase(FORGE_MOD_LOADER)
 ext.is_bukkit = mod_loader.equalsIgnoreCase(BUKKIT_LOADER)
+ext.is_paper = mod_loader.equalsIgnoreCase(PAPER_LOADER)
 
 // Fabric specific variables
 if (is_fabric) {
@@ -116,6 +118,10 @@ if (is_neoforge || is_forge) {
 
 if (is_bukkit) {
     checkProperty('bukkit_version')
+}
+
+if (is_paper) {
+    checkProperty('paper_version')
 }
 
 // Upload
@@ -210,6 +216,9 @@ if (is_forge) {
         // Mixin
         checkPlugin('org.spongepowered.mixin')
     }
+}
+if (is_paper) {
+    checkPlugin('io.papermc.paperweight.userdev')
 }
 
 if (use_shadow) {
@@ -439,6 +448,10 @@ dependencies {
         implementation "org.bukkit:craftbukkit:${bukkit_version}"
     }
 
+    if (is_paper) {
+        paperweight.paperDevBundle(paper_version)
+    }
+
     included_projects.forEach({
         def hasNamedElements = project(it).getConfigurations().findByName('namedElements') != null
         def included_project = hasNamedElements ? project(path: it, configuration: 'namedElements') : project(it)
@@ -584,6 +597,12 @@ if (is_forge) {
             it.output.resourcesDir = dir
             it.java.destinationDirectory = dir
         }
+    }
+}
+
+if (is_paper) {
+    if (use_shadow) {
+        assemble.dependsOn('shadowJar')
     }
 }
 
