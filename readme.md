@@ -44,6 +44,7 @@ apply from: "https://raw.githubusercontent.com/henkelmax/mod-gradle-scripts/${mo
 | `included_projects`          | The subprojects that should be included in the project                                                                                                            | Comma separated `String` list | *Empty list*                       |                                                           | `:common`     |
 | `use_shadow`                 | Whether to use shadow                                                                                                                                             | `boolean`                     | `true`                             |                                                           |               |
 | `enable_configbuilder`       | Whether config builder should be included in the project. Also shades the library if `use_shadow` is enabled                                                      | `boolean`                     | `false`                            |                                                           |               |
+| `configbuilder_version`      | The version of config builder that should be included in the project. Only applicable if `enable_configbuilder` is `true`                                         | `String`                      | `2.0.2`                            |                                                           |               |
 
 
 **If `use_shadow` is active**
