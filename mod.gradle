@@ -1,6 +1,5 @@
 // Constants
 def MIN_GRADLE_VERSION = '8.5'
-def MAX_EXCLUDED_GRADLE_VERSION = '9'
 def FABRIC_MOD_LOADER = 'fabric'
 def QUILT_MOD_LOADER = 'quilt'
 def NEOFORGE_MOD_LOADER = 'neoforge'
@@ -18,15 +17,9 @@ def DEFAULT_CONFIGBUILDER_VERSION = '2.0.2'
 def DEFAULT_FABRIC_LOADER_VERSION = '0.15.1'
 def DEFAULT_MIXIN_ANNOTATION_PROCESSOR_VERSION = '0.8.4'
 
-// Gradle version checks
-def gradle_version = VersionNumber.parse(getProject().getGradle().getGradleVersion())
 // Check for min Gradle version
-if (gradle_version < VersionNumber.parse(MIN_GRADLE_VERSION)) {
+if (!satisfiesVersion(getProject().getGradle().getGradleVersion(), MIN_GRADLE_VERSION)) {
     throw new RuntimeException("Outdated Gradle version, please update to ${MIN_GRADLE_VERSION} or later")
-}
-// Check for max Gradle version
-if (gradle_version >= VersionNumber.parse(MAX_EXCLUDED_GRADLE_VERSION)) {
-    throw new RuntimeException("Gradle version too new, please use <${MAX_EXCLUDED_GRADLE_VERSION}")
 }
 
 // Variables
@@ -895,4 +888,18 @@ def getChangelogFile() {
 
 def getUploadArtefact() {
     return (is_fabric || is_quilt) ? remapJar : (use_shadow ? shadowJar : jar)
+}
+
+static boolean satisfiesVersion(String actual, String expected) {
+    List<Integer> actualParts = actual.tokenize('.').collect { it.toInteger() }
+    List<Integer> expectedParts = expected.tokenize('.').collect { it.toInteger() }
+    int maxLength = Math.max(actualParts.size(), expectedParts.size())
+    for (int i = 0; i < maxLength; i++) {
+        int actualPart = i < actualParts.size() ? actualParts.get(i) : 0
+        int expectedPart = i < expectedParts.size() ? expectedParts.get(i) : 0
+        if (actualPart < expectedPart) {
+            return false
+        }
+    }
+    return true
 }
