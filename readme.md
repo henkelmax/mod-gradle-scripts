@@ -64,7 +64,8 @@ The Gradle plugin `fabric-loom` needs to applied before applying this script.
 | `fabric_api_version`          | The Fabric API version. Required if `included_fabric_api_modules` is set or `import_fabric_api` is enabled | `String`                      |               |                 | `0.91.3+1.20.4`                          |
 | `enable_accesswideners`       | If access wideners should be enabled. Uses `${mod_id}.accesswidener` as name                               | `boolean`                     | `false`       |                 |                                          |
 | `add_quilt_supported_tag`     | If quilt should be marked as supported when uploading the mod                                              | `boolean`                     | `true`        |                 |                                          |
-| `parchment_mappings`          | The parchment mappings (None if not provided)                                                              | `String`                      |               |                 | `parchment-1.21:2024.07.28`              |
+| `fabric_mappings`             | The Fabric mappings (Official mappings if not provided)                                                    | `String`                      |               |                 | `net.fabricmc:yarn:1.20.1+build.10`      |
+| `parchment_mappings`          | The parchment mappings (None if not provided - only applies if `fabric_mappings` is not set)               | `String`                      |               |                 | `parchment-1.21:2024.07.28`              |
 
 
 **If `mod_loader` `quilt` is used**
