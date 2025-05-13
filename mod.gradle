@@ -249,12 +249,16 @@ version = mod_version
 // Fabric run configuration
 if (is_fabric) {
     if (random_minecraft_user_name) {
-        runClient.doFirst {
-            args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+        tasks.named('runClient', JavaExec) {
+            doFirst {
+                args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+            }
         }
     } else {
-        runClient.doFirst {
-            args = ['--username', "${minecraft_user_name_prefix}"]
+        tasks.named('runClient', JavaExec) {
+            doFirst {
+                args = ['--username', "${minecraft_user_name_prefix}"]
+            }
         }
     }
 
