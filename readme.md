@@ -9,13 +9,13 @@ This script simplifies the configuration of a mod development environment includ
 
 This script supports:
 
-- Fabric Loom `1.4+`
-- Quilt Loom `1.4+`
+- Fabric Loom `1.10+`
+- Quilt Loom `1.8+`
 - NeoGradle `7.0+`
 - ForgeGradle `6.0+`
-- Paperweight `1.7.7+`
+- Paperweight `2.0.0+`
 
-Gradle version `8.5+` is required.
+Gradle version `8.14.2+` is required.
 
 ### Usage
 
@@ -49,7 +49,7 @@ apply from: "https://raw.githubusercontent.com/henkelmax/mod-gradle-scripts/${mo
 
 **If `use_shadow` is active**
 
-The Gradle plugin `com.github.johnrengelman.shadow` needs to applied before applying this script.
+The Gradle plugin `com.gradleup.shadow` needs to applied before applying this script.
 
 
 **If `mod_loader` `fabric` is used**
