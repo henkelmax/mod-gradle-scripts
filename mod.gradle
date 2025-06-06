@@ -215,7 +215,7 @@ if (is_paper) {
 }
 
 if (use_shadow) {
-    checkPlugin('com.github.johnrengelman.shadow')
+    checkPlugin('com.gradleup.shadow')
 }
 
 apply plugin: 'java'
