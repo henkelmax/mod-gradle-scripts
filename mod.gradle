@@ -395,7 +395,9 @@ repositories {
     if (is_fabric) {
         maven { url = 'https://maven.parchmentmc.org/' }
     }
-    maven { url = 'https://libraries.minecraft.net' }
+    if (!is_bukkit) {
+        maven { url = 'https://libraries.minecraft.net' }
+    }
     mavenLocal()
 }
 
