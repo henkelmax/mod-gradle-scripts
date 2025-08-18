@@ -275,12 +275,16 @@ if (is_fabric) {
 // Quilt run configuration
 if (is_quilt) {
     if (random_minecraft_user_name) {
-        runClient.doFirst {
+        tasks.named('runClient', JavaExec) {
+            doFirst {
             args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+            }
         }
     } else {
-        runClient.doFirst {
+        tasks.named('runClient', JavaExec) {
+            doFirst {
             args = ['--username', "${minecraft_user_name_prefix}"]
+            }
         }
     }
 
