@@ -1,11 +1,13 @@
 def runCommand(String commandName, boolean ignoreExitCode, String... commands) {
-    def osName = System.getProperty("os.name")
-    if (!osName.toLowerCase().contains("windows")) {
-        throw new RuntimeException('This task only works on Windows')
-    }
+    def osName = System.getProperty("os.name").toLowerCase()
     def args = []
-    args.add('cmd')
-    args.add('/c')
+    if (osName.contains("windows")) {
+        args.add('cmd')
+        args.add('/c')
+    } else {
+        args.add('bash')
+        args.add('-c')
+    }
     args.addAll(commands)
     printGreen("Executing '{}'", commandName)
     def result = exec {
@@ -51,7 +53,9 @@ def runGradleTasks(List<String> mandatoryTasks, List<String> optionalTasks) {
 }
 
 def runGradleTask(String taskName, boolean ignoreExitCode) {
-    return runCommand(taskName, ignoreExitCode, 'gradlew', taskName)
+    def osName = System.getProperty("os.name").toLowerCase()
+    def gradlewCmd = osName.contains("windows") ? "gradlew.bat" : "./gradlew"
+    return runCommand(taskName, ignoreExitCode, "${gradlewCmd} ${taskName}")
 }
 
 def printGreen(String template, Object... args) {
