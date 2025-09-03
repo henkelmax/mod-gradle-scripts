@@ -277,13 +277,13 @@ if (is_quilt) {
     if (random_minecraft_user_name) {
         tasks.named('runClient', JavaExec) {
             doFirst {
-            args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+                args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
             }
         }
     } else {
         tasks.named('runClient', JavaExec) {
             doFirst {
-            args = ['--username', "${minecraft_user_name_prefix}"]
+                args = ['--username', "${minecraft_user_name_prefix}"]
             }
         }
     }
@@ -858,7 +858,7 @@ if (enable_mod_update) {
  * @return the property
  */
 def <T> T getOrDefault(String propertyName, T defaultValue = null, Closure mutator = { it }) {
-    if (!project.hasProperty(propertyName)) {
+    if (!hasProperty(propertyName)) {
         return defaultValue
     }
     return mutator(getProperty(propertyName))
@@ -870,7 +870,7 @@ def <T> T getOrDefault(String propertyName, T defaultValue = null, Closure mutat
  * @param propertyName the name of the property to check
  */
 def checkProperty(String propertyName) {
-    if (!project.hasProperty(propertyName)) {
+    if (!hasProperty(propertyName)) {
         throw new RuntimeException("No property '${propertyName}' defined")
     }
 }
@@ -885,7 +885,14 @@ def checkPlugin(String pluginName) {
     }
 }
 
-static def stringToStringList(String str) {
+static def stringToStringList(Object value) {
+    if (!(value instanceof String)) {
+        return value
+    }
+    String str = value
+    if (str.isBlank()) {
+        return []
+    }
     return str.split(',').collect({ it.trim() })
 }
 
