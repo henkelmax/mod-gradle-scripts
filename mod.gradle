@@ -1,5 +1,5 @@
 // Constants
-def MIN_GRADLE_VERSION = '8.5'
+def MIN_GRADLE_VERSION = '9.0.0'
 def FABRIC_MOD_LOADER = 'fabric'
 def QUILT_MOD_LOADER = 'quilt'
 def NEOFORGE_MOD_LOADER = 'neoforge'
@@ -233,16 +233,21 @@ subprojects {
     apply plugin: 'idea'
 }
 
-def java_language_version = JavaLanguageVersion.of(java_version)
-sourceCompatibility = java_language_version
-targetCompatibility = java_language_version
+java {
+    def java_language_version = JavaLanguageVersion.of(java_version)
+    sourceCompatibility = java_language_version
+    targetCompatibility = java_language_version
+}
 
 if (hasProperty('java_toolchain_version')) {
     java.toolchain.languageVersion = JavaLanguageVersion.of(getProperty('java_toolchain_version') as int)
 }
 
+base {
+    archivesName = getOrDefault('archives_base_name', "${mod_id.replaceAll('_', '-')}-${mod_loader}")
+}
+
 group = getOrDefault('maven_group', "de.maxhenkel.${mod_id.replaceAll('_', '')}")
-archivesBaseName = getOrDefault('archives_base_name', "${mod_id.replaceAll('_', '-')}-${mod_loader}")
 version = mod_version
 
 // Run configurations
@@ -275,16 +280,12 @@ if (is_fabric) {
 // Quilt run configuration
 if (is_quilt) {
     if (random_minecraft_user_name) {
-        tasks.named('runClient', JavaExec) {
-            doFirst {
-                args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
-            }
+        runClient.doFirst {
+            args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
         }
     } else {
-        tasks.named('runClient', JavaExec) {
-            doFirst {
-                args = ['--username', "${minecraft_user_name_prefix}"]
-            }
+        runClient.doFirst {
+            args = ['--username', "${minecraft_user_name_prefix}"]
         }
     }
 
@@ -559,6 +560,7 @@ jar {
 
 if (use_shadow) {
     shadowJar {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         configurations = [project.configurations.shadow]
         if (is_fabric || is_quilt) {
             archiveClassifier = 'shadow-dev'
@@ -858,7 +860,7 @@ if (enable_mod_update) {
  * @return the property
  */
 def <T> T getOrDefault(String propertyName, T defaultValue = null, Closure mutator = { it }) {
-    if (!hasProperty(propertyName)) {
+    if (!project.hasProperty(propertyName)) {
         return defaultValue
     }
     return mutator(getProperty(propertyName))
@@ -870,7 +872,7 @@ def <T> T getOrDefault(String propertyName, T defaultValue = null, Closure mutat
  * @param propertyName the name of the property to check
  */
 def checkProperty(String propertyName) {
-    if (!hasProperty(propertyName)) {
+    if (!project.hasProperty(propertyName)) {
         throw new RuntimeException("No property '${propertyName}' defined")
     }
 }
