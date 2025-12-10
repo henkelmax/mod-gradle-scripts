@@ -199,8 +199,6 @@ if (is_quilt) {
 if (is_neoforge) {
     // Neoforge gradle
     checkPlugin('net.neoforged.gradle.userdev')
-    // Neoforge mixins
-    checkPlugin('net.neoforged.gradle.mixin')
 }
 if (is_forge) {
     // Forge gradle
@@ -304,6 +302,7 @@ if (is_neoforge) {
     configurations {
         minecraftLibrary {}
         implementation.extendsFrom minecraftLibrary
+        runtimeClasspath.extendsFrom localRuntime
     }
 
     runs {
@@ -329,12 +328,6 @@ if (is_neoforge) {
     }
 
     sourceSets.main.resources { srcDir 'src/generated/resources' }
-
-    if (use_mixins) {
-        mixin {
-            config "${mod_id}.mixins.json"
-        }
-    }
 
     if (enable_accesstransformers) {
         minecraft.accessTransformers.file file('src/main/resources/META-INF/accesstransformer.cfg')
@@ -620,31 +613,6 @@ afterEvaluate {
 
         }
     }
-}
-
-// NeoForge clean fix
-if (is_neoforge) {
-    // https://github.com/neoforged/NeoGradle/issues/18#issuecomment-1858754401
-    tasks.register('customClean', Delete) {
-        doLast {
-            def files = []
-            fileTree("build")
-                    .exclude('**/expanded.lock')
-                    .visit { FileVisitDetails fvd ->
-                        files << fvd.file
-                    }
-            files.reverse()
-                    .each { f ->
-                        def file = file(f)
-                        if (!file.exists()) return;
-                        if ((file.isDirectory() && file.list().size() == 0)
-                                || !file.isDirectory())
-                            delete f
-                    }
-        }
-    }
-    clean.dependsOn customClean
-    clean.enabled = false
 }
 
 // CurseForge Upload

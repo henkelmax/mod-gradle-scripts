@@ -11,7 +11,7 @@ This script supports:
 
 - Fabric Loom `1.14+`
 - Quilt Loom `1.8+`
-- NeoGradle `7.0+`
+- NeoGradle `7.1.+`
 - ForgeGradle `6.0+`
 - Paperweight `2.0.0+`
 
