@@ -9,13 +9,13 @@ This script simplifies the configuration of a mod development environment includ
 
 This script supports:
 
-- Fabric Loom `1.10+`
+- Fabric Loom `1.14+`
 - Quilt Loom `1.8+`
 - NeoGradle `7.0+`
 - ForgeGradle `6.0+`
 - Paperweight `2.0.0+`
 
-Gradle version `8.14.2+` is required.
+Gradle version `9+` is required.
 
 ### Usage
 
@@ -136,7 +136,7 @@ Additionally the plugin `org.spongepowered.mixin` needs to be applied if `includ
 
 You need to set the `CURSEFORGE_API_KEY` environment variable to be able to upload mods.
 
-The Gradle plugin `com.matthewprenger.cursegradle` needs to applied before applying this script.
+The Gradle plugin `de.maxhenkel.cursegradle` (See [this](https://github.com/henkelmax/curse-gradle)) needs to applied before applying this script.
 
 | Property                                  | Description                                                                                       | Type                          | Default Value                            | Possible Values | Example            |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------- | --------------- | ------------------ |

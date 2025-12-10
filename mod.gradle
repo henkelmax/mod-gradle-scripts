@@ -123,7 +123,7 @@ ext.upload_recommended = getOrDefault('upload_recommended', false, it -> it.toBo
 // CurseForge upload
 ext.enable_curseforge_upload = getOrDefault('enable_curseforge_upload', true, it -> it.toBoolean())
 if (enable_curseforge_upload) {
-    checkPlugin('com.matthewprenger.cursegradle')
+    checkPlugin('de.maxhenkel.cursegradle')
     checkProperty('curseforge_upload_id')
     ext.curseforge_upload_include_prefix = getOrDefault('curseforge_upload_include_prefix', true, it -> it.toBoolean())
     ext.curseforge_upload_minecraft_versions = getOrDefault('curseforge_upload_minecraft_versions', [], it -> stringToStringList(it))
