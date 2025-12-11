@@ -113,7 +113,7 @@ if (is_forge) {
 if (is_neoforge || is_forge) {
     // TODO Automatically detect the accesstransformer file
     ext.enable_accesstransformers = getOrDefault('enable_accesstransformers', false, it -> it.toBoolean())
-    if (!legacy_forge) {
+    if (is_forge && !legacy_forge) {
         checkPlugin('net.minecraftforge.accesstransformers')
     }
 }
