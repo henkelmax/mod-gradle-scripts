@@ -890,6 +890,8 @@ static boolean satisfiesVersion(String actual, String expected) {
         int expectedPart = i < expectedParts.size() ? expectedParts.get(i) : 0
         if (actualPart < expectedPart) {
             return false
+        } else if (actualPart > expectedPart) {
+            return true
         }
     }
     return true
