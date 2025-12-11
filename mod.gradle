@@ -265,7 +265,6 @@ if (is_fabric) {
         }
     }
 
-
     // Access widener
     def accesswidenerFile = file("src/main/resources/${mod_id}.accesswidener")
     if (enable_accesswideners && accesswidenerFile.exists()) {
@@ -278,12 +277,16 @@ if (is_fabric) {
 // Quilt run configuration
 if (is_quilt) {
     if (random_minecraft_user_name) {
-        runClient.doFirst {
-            args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+        tasks.named('runClient', JavaExec) {
+            doFirst {
+                args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+            }
         }
     } else {
-        runClient.doFirst {
-            args = ['--username', "${minecraft_user_name_prefix}"]
+        tasks.named('runClient', JavaExec) {
+            doFirst {
+                args = ['--username', "${minecraft_user_name_prefix}"]
+            }
         }
     }
 
