@@ -893,5 +893,7 @@ static boolean satisfiesVersion(String actual, String expected) {
 }
 
 tasks.withType(AbstractTestTask).configureEach {
-    failOnNoDiscoveredTests = false
+    if (it.metaClass.getMetaProperty('failOnNoDiscoveredTests')) {
+        it.failOnNoDiscoveredTests = false
+    }
 }
