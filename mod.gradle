@@ -133,7 +133,7 @@ if (enable_curseforge_upload) {
 // CurseForge Bukkit upload
 ext.enable_curseforge_bukkit_upload = getOrDefault('enable_curseforge_bukkit_upload', false, it -> it.toBoolean())
 if (enable_curseforge_bukkit_upload) {
-    checkPlugin('info.u_team.curse_gradle_uploader')
+    checkPlugin('de.maxhenkel.cursegradle')
     checkProperty('curseforge_bukkit_upload_id')
     ext.curseforge_bukkit_upload_minecraft_versions = getOrDefault('curseforge_bukkit_upload_minecraft_versions', [], it -> stringToStringList(it))
 }

@@ -151,7 +151,7 @@ The Gradle plugin `de.maxhenkel.cursegradle` (See [this](https://github.com/henk
 
 You need to set the `CURSEFORGE_API_KEY` environment variable to be able to upload plugins.
 
-The Gradle plugin `info.u_team.curse_gradle_uploader` needs to applied before applying this script.
+The Gradle plugin `de.maxhenkel.cursegradle` needs to applied before applying this script.
 
 | Property                                      | Description                             | Type                          | Default Value                      | Possible Values | Example                |
 | --------------------------------------------- | --------------------------------------- | ----------------------------- | ---------------------------------- | --------------- | ---------------------- |
