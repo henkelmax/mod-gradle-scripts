@@ -92,18 +92,19 @@ The Gradle plugins `net.neoforged.gradle.userdev` and `net.neoforged.gradle.mixi
 
 The Gradle plugin `net.minecraftforge.gradle` needs to applied before applying this script.
 
-Additionally the plugin `org.spongepowered.mixin` needs to be applied if `include_mixins` is enabled.
+Additionally the plugin `org.spongepowered.mixin` needs to be applied if `include_mixins` is enabled (`legacy_forge` only).
+Additionally the plugin `net.minecraftforge.accesstransformers` needs to be applied if `enable_accesstransformers` is enabled (non-`legacy_forge` only).
 
-| Property                             | Description                                                                               | Type      | Default Value                            | Possible Values | Example                                  |
-| ------------------------------------ | ----------------------------------------------------------------------------------------- | --------- | ---------------------------------------- | --------------- | ---------------------------------------- |
-| `forge_version`                      | The Forge version                                                                         | `String`  | *This field is required to be set*       |                 | `48.0.1`                                 |
-| `mixin_annotation_processor_version` | The version of the Mixin annotation processor                                             | `String`  | `0.8.4`                                  |                 |                                          |
-| `mixin_connector_path`               | The path to the Mixin connector. Required if using Minecraft versions older than `1.20.6` | `String`  |                                          |                 | `de.maxhenkel.examplemod.MixinConnector` |
-| `merge_files`                        | Whether to combine all classes and resources                                              | `boolean` | `true`                                   |                 |                                          |
-| `forge_mappings_channel`             | The mappings channel                                                                      | `String`  | `official`                               |                 |                                          |
-| `forge_mappings_version`             | The mappings version                                                                      | `String`  | The `minecraft_version` that was defined |                 |                                          |
-| `enable_accesstransformers`          | If access transformers should be enabled. Uses `META-INF/accesstransformer.cfg` as path   | `boolean` | `false`                                  |                 |                                          |
-| `reobfuscate`                        | Whether to reobfuscate the mod (Set this to `false` starting with `1.20.5`)               | `boolean` | `true`                                   |                 |                                          |
+| Property                             | Description                                                                               | Type      | Default Value                              | Possible Values | Example                                  |
+| ------------------------------------ | ----------------------------------------------------------------------------------------- | --------- | ------------------------------------------ | --------------- | ---------------------------------------- |
+| `forge_version`                      | The Forge version                                                                         | `String`  | *This field is required to be set*         |                 | `48.0.1`                                 |
+| `mixin_annotation_processor_version` | The version of the Mixin annotation processor                                             | `String`  | `0.8.4`                                    |                 |                                          |
+| `mixin_connector_path`               | The path to the Mixin connector. Required if using Minecraft versions older than `1.20.6` | `String`  |                                            |                 | `de.maxhenkel.examplemod.MixinConnector` |
+| `merge_files`                        | Whether to combine all classes and resources                                              | `boolean` | `true`                                     |                 |                                          |
+| `forge_mappings_channel`             | The mappings channel                                                                      | `String`  | `official`                                 |                 |                                          |
+| `forge_mappings_version`             | The mappings version                                                                      | `String`  | The `minecraft_version` that was defined   |                 |                                          |
+| `enable_accesstransformers`          | If access transformers should be enabled. Uses `META-INF/accesstransformer.cfg` as path   | `boolean` | `false`                                    |                 |                                          |
+| `legacy_forge`                       | Whether to use Forgegradle 6                                                              | `boolean` | `true` if `minecraft_version` is `<1.20.2` |                 |                                          |
 
 
 **If `mod_loader` `bukkit` is used**

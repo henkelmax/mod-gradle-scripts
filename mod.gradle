@@ -99,14 +99,23 @@ if (is_forge) {
     // Defaults to official mappings if not present
     ext.forge_mappings_channel = getOrDefault('forge_mappings_channel', 'official')
     ext.forge_mappings_version = getOrDefault('forge_mappings_version', minecraft_version)
-    ext.reobfuscate = getOrDefault('reobfuscate', true, it -> it.toBoolean())
-    if (!reobfuscate) {
+    def needs_reobf = !satisfiesVersion(minecraft_version, '1.20.2')
+    ext.legacy_forge = getOrDefault('legacy_forge', needs_reobf, it -> it.toBoolean())
+    if (project.hasProperty('reobfuscate')) {
+        throw new RuntimeException('Property "reobfuscate" is not required anymore')
+    }
+    ext.reobfuscate = needs_reobf
+    if (legacy_forge && !reobfuscate) {
         minecraft.reobf = false
     }
 }
 
 if (is_neoforge || is_forge) {
+    // TODO Automatically detect the accesstransformer file
     ext.enable_accesstransformers = getOrDefault('enable_accesstransformers', false, it -> it.toBoolean())
+    if (!legacy_forge) {
+        checkPlugin('net.minecraftforge.accesstransformers')
+    }
 }
 
 if (is_bukkit) {
@@ -203,7 +212,7 @@ if (is_neoforge) {
 if (is_forge) {
     // Forge gradle
     checkPlugin('net.minecraftforge.gradle')
-    if (include_mixins) {
+    if (legacy_forge && include_mixins) {
         // Mixin
         checkPlugin('org.spongepowered.mixin')
     }
@@ -341,16 +350,43 @@ if (is_neoforge) {
 if (is_forge) {
     minecraft {
         mappings channel: forge_mappings_channel, version: forge_mappings_version
-        copyIdeResources = true
+        if (legacy_forge) {
+            copyIdeResources = true
+        }
+        //TODO Use this instead of "enable_accesstransformers"
+        /*def at = file('src/main/resources/META-INF/accesstransformer.cfg')
+        if (at.exists()) {
+            accessTransformer = at
+        }*/
         if (enable_accesstransformers) {
-            accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+            if (legacy_forge) {
+                accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+            } else {
+                //accessTransformers(true)
+                accessTransformers {
+                    accessTransformers = "META-INF/accesstransformer.cfg"
+                }
+            }
         }
         runs {
-            configureEach {
-                property 'forge.logging.console.level', 'debug'
+            if (legacy_forge) {
+                configureEach {
+                    property 'forge.logging.console.level', 'debug'
+                }
+            } else {
+                if (use_mixins) {
+                    configureEach {
+                        args "-mixin.config=${mod_id}.mixins.json"
+                    }
+                }
             }
             client {
-                workingDirectory file('run')
+                if (legacy_forge) {
+                    workingDirectory file('run')
+                } else {
+                    workingDir = file('run')
+                }
+
                 if (random_minecraft_user_name) {
                     args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
                 } else {
@@ -358,19 +394,28 @@ if (is_forge) {
                 }
             }
             server {
-                workingDirectory file('run/server')
-                arg '--nogui'
+                if (legacy_forge) {
+                    workingDirectory file('run/server')
+                } else {
+                    workingDir = file('run/server')
+                }
+                args = ['--nogui']
             }
             data {
-                workingDirectory file('run')
-                args '--mod', mod_id, '--all', '--output', file('src/generated/resources/')
+                if (legacy_forge) {
+                    workingDirectory file('run')
+                    args '--mod', mod_id, '--all', '--output', file('src/generated/resources/')
+                } else {
+                    workingDir = file('run')
+                    args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+                }
             }
         }
     }
 
-    sourceSets.main.resources { srcDir 'src/generated/resources' }
+    sourceSets.main.resources.srcDir 'src/generated/resources'
 
-    if (use_mixins) {
+    if (legacy_forge && use_mixins) {
         mixin {
             add sourceSets.main, "${mod_id}.refmap.json"
         }
@@ -382,6 +427,12 @@ if (is_forge) {
         it.output.resourcesDir = dir
         it.java.destinationDirectory = dir
     }*/
+    if (!legacy_forge) {
+        configurations {
+            minecraftLibrary {}
+            implementation.extendsFrom minecraftLibrary
+        }
+    }
 }
 
 // Dependency management
@@ -398,6 +449,11 @@ repositories {
     }
     if (!is_bukkit) {
         maven { url = 'https://libraries.minecraft.net' }
+    }
+    if (is_forge && !legacy_forge) {
+        maven minecraft.mavenizer
+        maven fg.forgeMaven
+        maven fg.minecraftLibsMaven
     }
     mavenLocal()
 }
@@ -439,9 +495,13 @@ dependencies {
     }
 
     if (is_forge) {
-        minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-        if (include_mixins) {
-            annotationProcessor "org.spongepowered:mixin:${mixin_annotation_processor_version}:processor"
+        if (legacy_forge) {
+            minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+            if (include_mixins) {
+                annotationProcessor "org.spongepowered:mixin:${mixin_annotation_processor_version}:processor"
+            }
+        } else {
+            implementation minecraft.dependency("net.minecraftforge:forge:${minecraft_version}-${forge_version}")
         }
     }
 
@@ -548,7 +608,7 @@ jar {
         manifest {
             attributes(attrs)
         }
-        if (minecraft.reobf) {
+        if (legacy_forge && minecraft.reobf) {
             finalizedBy 'reobfJar'
         }
     }
@@ -584,7 +644,7 @@ if (is_neoforge) {
 
 if (is_forge) {
     if (use_shadow) {
-        if (minecraft.reobf) {
+        if (legacy_forge && minecraft.reobf) {
             shadowJar.dependsOn('reobfJar')
             reobf {
                 shadowJar {}
