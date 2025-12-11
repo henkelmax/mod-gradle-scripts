@@ -1,5 +1,5 @@
 // Constants
-def MIN_GRADLE_VERSION = '9.0.0'
+def MIN_GRADLE_VERSION = '8.14.3'
 def FABRIC_MOD_LOADER = 'fabric'
 def QUILT_MOD_LOADER = 'quilt'
 def NEOFORGE_MOD_LOADER = 'neoforge'
@@ -890,4 +890,8 @@ static boolean satisfiesVersion(String actual, String expected) {
         }
     }
     return true
+}
+
+tasks.withType(AbstractTestTask).configureEach {
+    failOnNoDiscoveredTests = false
 }

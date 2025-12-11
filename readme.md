@@ -9,13 +9,13 @@ This script simplifies the configuration of a mod development environment includ
 
 This script supports:
 
-- Fabric Loom `1.14+`
+- Fabric Loom `1.13+`
 - Quilt Loom `1.8+`
-- NeoGradle `7.1.+`
-- ForgeGradle `6.0+`
-- Paperweight `2.0.0+`
+- NeoGradle `7.+`
+- ForgeGradle `6.+`
+- Paperweight `2.0.+`
 
-Gradle version `9+` is required.
+Gradle version `9+` is recommended but `8.14.3+` works as well.
 
 ### Usage
 
