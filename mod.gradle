@@ -572,7 +572,7 @@ processResources {
 
 jar {
     from('LICENSE') {
-        rename { "${it}_${archivesBaseName}" }
+        rename { "${it}_${base.archivesName}" }
     }
 
     // Manifest attributes
