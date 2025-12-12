@@ -14,6 +14,7 @@ def DEFAULT_RELEASE_TYPE = 'alpha'
 def DEFAULT_MINECRAFT_USER_NAME_PREFIX = 'henkelmax'
 
 def DEFAULT_CONFIGBUILDER_VERSION = '2.0.2'
+//TODO Fail if not explicitly set
 def DEFAULT_FABRIC_LOADER_VERSION = '0.15.1'
 def DEFAULT_MIXIN_ANNOTATION_PROCESSOR_VERSION = '0.8.4'
 
@@ -62,8 +63,21 @@ ext.is_forge = mod_loader.equalsIgnoreCase(FORGE_MOD_LOADER)
 ext.is_bukkit = mod_loader.equalsIgnoreCase(BUKKIT_LOADER)
 ext.is_paper = mod_loader.equalsIgnoreCase(PAPER_LOADER)
 
+// Check if shadow is plugin is present
+if (use_shadow) {
+    checkPlugin('com.gradleup.shadow')
+}
+
 // Fabric specific variables
 if (is_fabric) {
+    if (hasPlugin('net.fabricmc.fabric-loom')) {
+        ext.remap_fabric = false
+    } else if (hasPlugin('net.fabricmc.fabric-loom-remap') || hasPlugin('fabric-loom')) {
+        ext.remap_fabric = true
+    } else {
+        throw new RuntimeException("Missing plugin 'net.fabricmc.fabric-loom' or 'net.fabricmc.fabric-loom-remap'")
+    }
+
     ext.fabric_loader_version = getOrDefault('fabric_loader_version', DEFAULT_FABRIC_LOADER_VERSION)
     ext.included_fabric_api_modules = getOrDefault('included_fabric_api_modules', [], it -> stringToStringList(it))
     ext.import_fabric_api = getOrDefault('import_fabric_api', false, it -> it.toBoolean())
@@ -80,6 +94,7 @@ if (is_fabric) {
 
 // Quilt specific variables
 if (is_quilt) {
+    checkPlugin('org.quiltmc.loom')
     checkProperty('quilt_loader_version')
     // TODO Add access widener path to quilt.mod.json
     ext.enable_accesswideners = getOrDefault('enable_accesswideners', false, it -> it.toBoolean())
@@ -87,11 +102,13 @@ if (is_quilt) {
 
 // Neoforge specific variables
 if (is_neoforge) {
+    checkPlugin('net.neoforged.gradle.userdev')
     checkProperty('neoforge_version')
 }
 
 // Forge specific variables
 if (is_forge) {
+    checkPlugin('net.minecraftforge.gradle')
     checkProperty('forge_version')
     ext.mixin_annotation_processor_version = getOrDefault('mixin_annotation_processor_version', DEFAULT_MIXIN_ANNOTATION_PROCESSOR_VERSION)
     // Merge the resources and classes into the same directory
@@ -108,6 +125,10 @@ if (is_forge) {
     if (legacy_forge && !reobfuscate) {
         minecraft.reobf = false
     }
+    if (legacy_forge && include_mixins) {
+        // Mixin
+        checkPlugin('org.spongepowered.mixin')
+    }
 }
 
 if (is_neoforge || is_forge) {
@@ -123,6 +144,7 @@ if (is_bukkit) {
 }
 
 if (is_paper) {
+    checkPlugin('io.papermc.paperweight.userdev')
     checkProperty('paper_version')
 }
 
@@ -198,46 +220,19 @@ included_projects.forEach({
     evaluationDependsOn(it)
 })
 
-// Checking if mandatory plugins exist
-if (is_fabric) {
-    checkPlugin('fabric-loom')
-}
-if (is_quilt) {
-    checkPlugin('org.quiltmc.loom')
-}
-if (is_neoforge) {
-    // Neoforge gradle
-    checkPlugin('net.neoforged.gradle.userdev')
-}
-if (is_forge) {
-    // Forge gradle
-    checkPlugin('net.minecraftforge.gradle')
-    if (legacy_forge && include_mixins) {
-        // Mixin
-        checkPlugin('org.spongepowered.mixin')
-    }
-}
-if (is_paper) {
-    checkPlugin('io.papermc.paperweight.userdev')
-}
-
-if (use_shadow) {
-    checkPlugin('com.gradleup.shadow')
-}
-
 apply plugin: 'java'
 apply plugin: 'idea'
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'idea'
+}
 
 idea {
     module {
         downloadJavadoc = true
         downloadSources = true
     }
-}
-
-subprojects {
-    apply plugin: 'java'
-    apply plugin: 'idea'
 }
 
 java {
@@ -461,26 +456,42 @@ repositories {
 dependencies {
     if (is_fabric) {
         minecraft "com.mojang:minecraft:${minecraft_version}"
-        if (fabric_mappings != null) {
-            mappings "${fabric_mappings}"
-        } else {
-            if (parchment_mappings != null) {
-                mappings loom.layered() {
-                    officialMojangMappings()
-                    parchment("org.parchmentmc.data:${parchment_mappings}@zip")
-                }
+        // Mappings
+        if (remap_fabric) {
+            if (fabric_mappings != null) {
+                mappings "${fabric_mappings}"
             } else {
-                mappings loom.officialMojangMappings()
-            }
+                if (parchment_mappings != null) {
+                    mappings loom.layered() {
+                        officialMojangMappings()
+                        parchment("org.parchmentmc.data:${parchment_mappings}@zip")
+                    }
+                } else {
+                    mappings loom.officialMojangMappings()
+                }
 
+            }
         }
-        modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+        // Fabric Loader
+        if (remap_fabric) {
+            modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+        } else {
+            implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+        }
         // Fabric API
         included_fabric_api_modules.forEach {
-            include(modImplementation(fabricApi.module(it, fabric_api_version)))
+            if (remap_fabric) {
+                include(modImplementation(fabricApi.module(it, fabric_api_version)))
+            } else {
+                include(implementation(fabricApi.module(it, fabric_api_version)))
+            }
         }
         if (import_fabric_api) {
-            modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+            if (remap_fabric) {
+                modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+            } else {
+                implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+            }
         }
     }
 
@@ -630,9 +641,13 @@ if (use_shadow) {
 }
 
 if (use_shadow && (is_fabric || is_quilt)) {
-    remapJar {
-        dependsOn shadowJar
-        inputFile = shadowJar.archiveFile.get()
+    if (remap_fabric) {
+        remapJar {
+            dependsOn shadowJar
+            inputFile = shadowJar.archiveFile.get()
+        }
+    } else {
+        assemble.dependsOn('shadowJar')
     }
 }
 
@@ -938,7 +953,10 @@ def getChangelogFile() {
 }
 
 def getUploadArtefact() {
-    return (is_fabric || is_quilt) ? remapJar : (use_shadow ? shadowJar : jar)
+    if (is_quilt) {
+        return remapJar
+    }
+    return use_shadow ? shadowJar : jar
 }
 
 static boolean satisfiesVersion(String actual, String expected) {
