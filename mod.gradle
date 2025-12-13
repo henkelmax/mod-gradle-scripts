@@ -896,6 +896,12 @@ if (enable_mod_update) {
     }
 }
 
+tasks.withType(AbstractTestTask).configureEach {
+    if (it.metaClass.getMetaProperty('failOnNoDiscoveredTests')) {
+        it.failOnNoDiscoveredTests = false
+    }
+}
+
 // Utility functions
 /**
  * Checks if a property exists or falls back to a default value.
@@ -959,9 +965,18 @@ def getUploadArtefact() {
     return use_shadow ? shadowJar : jar
 }
 
+/**
+ * Checks if a version satisfies another version.
+ * Note that this doesnt check any pre-release versions or release candidates.
+ * <code>1.2.3-rc1</code> is treated as <code>1.2.3</code>.
+ *
+ * @param actual the version to check
+ * @param expected the minimum required version
+ * @return true if the version satisfies the expected version
+ */
 static boolean satisfiesVersion(String actual, String expected) {
-    List<Integer> actualParts = actual.tokenize('.').collect { it.toInteger() }
-    List<Integer> expectedParts = expected.tokenize('.').collect { it.toInteger() }
+    List<Integer> actualParts = actual.split('-', 2)[0].tokenize('.').collect { it.toInteger() }
+    List<Integer> expectedParts = expected.split('-', 2)[0].tokenize('.').collect { it.toInteger() }
     int maxLength = Math.max(actualParts.size(), expectedParts.size())
     for (int i = 0; i < maxLength; i++) {
         int actualPart = i < actualParts.size() ? actualParts.get(i) : 0
@@ -973,10 +988,4 @@ static boolean satisfiesVersion(String actual, String expected) {
         }
     }
     return true
-}
-
-tasks.withType(AbstractTestTask).configureEach {
-    if (it.metaClass.getMetaProperty('failOnNoDiscoveredTests')) {
-        it.failOnNoDiscoveredTests = false
-    }
 }
