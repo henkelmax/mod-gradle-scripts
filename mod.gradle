@@ -640,7 +640,7 @@ if (use_shadow) {
     }
 }
 
-if (use_shadow && (is_fabric || is_quilt)) {
+if (is_fabric && use_shadow) {
     if (remap_fabric) {
         remapJar {
             dependsOn shadowJar
@@ -648,6 +648,13 @@ if (use_shadow && (is_fabric || is_quilt)) {
         }
     } else {
         assemble.dependsOn('shadowJar')
+    }
+}
+
+if (is_quilt && use_shadow) {
+    remapJar {
+        dependsOn shadowJar
+        inputFile = shadowJar.archiveFile.get()
     }
 }
 
