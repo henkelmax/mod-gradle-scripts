@@ -1,3 +1,9 @@
+import javax.inject.Inject
+
+interface InjectedExecOps {
+    @Inject ExecOperations getExecOps()
+}
+
 def runCommand(String commandName, boolean ignoreExitCode, String... commands) {
     def osName = System.getProperty("os.name").toLowerCase()
     def args = []
@@ -10,7 +16,8 @@ def runCommand(String commandName, boolean ignoreExitCode, String... commands) {
     }
     args.addAll(commands)
     printGreen("Executing '{}'", commandName)
-    def result = exec {
+    def execOps = project.objects.newInstance(InjectedExecOps).execOps
+    def result = execOps.exec {
         commandLine args
         ignoreExitValue ignoreExitCode
     }
