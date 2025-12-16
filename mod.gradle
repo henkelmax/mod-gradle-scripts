@@ -967,7 +967,10 @@ def getChangelogFile() {
 
 def getUploadArtefact() {
     if (is_quilt) {
-        return remapJar
+        return remapJar;
+    }
+    if (is_fabric && remap_fabric) {
+        return remapJar;
     }
     return use_shadow ? shadowJar : jar
 }
