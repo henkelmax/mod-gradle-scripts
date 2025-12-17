@@ -629,10 +629,27 @@ if (use_shadow) {
     shadowJar {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         configurations = [project.configurations.shadow]
-        if (is_fabric || is_quilt) {
+        if (is_quilt || (is_fabric && remap_fabric)) {
             archiveClassifier = 'shadow-dev'
         } else {
             archiveClassifier = ''
+        }
+        if (is_fabric && !remap_fabric) {
+            // For non-remapped Fabric, we need to take the normal jar as base,
+            // since Fabric now adds the include(...) jars in the jar task
+            jar {
+                archiveClassifier = 'dev'
+            }
+            archiveClassifier = ''
+            dependsOn tasks.jar
+            from(zipTree(tasks.jar.archiveFile))
+            def resourcesOutputDir = sourceSets.main.output.resourcesDir
+            exclude { FileTreeElement details ->
+                return details.file.absolutePath.startsWith(resourcesOutputDir.absolutePath)
+            }
+            doLast {
+                delete tasks.jar.archiveFile
+            }
         }
         if (enable_configbuilder) {
             relocate 'de.maxhenkel.configbuilder', "de.maxhenkel.${mod_id}.configbuilder"
