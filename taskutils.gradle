@@ -85,7 +85,7 @@ ext.runGradleTasks = { List<String> mandatoryTasks, List<String> optionalTasks -
 }
 
 ext.runGradleTask = { String taskName, boolean ignoreExitCode, File workDir=null ->
-    runGradleTask(taskName, ignoreExitCode)
+    runGradleTask(taskName, ignoreExitCode, workDir)
 }
 
 ext.runCommand = { String commandName, boolean ignoreExitCode, File workDir, String... commands ->
