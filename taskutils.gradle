@@ -4,7 +4,7 @@ interface InjectedExecOps {
     @Inject ExecOperations getExecOps()
 }
 
-def runCommand(String commandName, boolean ignoreExitCode, String... commands) {
+def runCommand(String commandName, boolean ignoreExitCode, File workDir, String... commands) {
     def osName = System.getProperty("os.name").toLowerCase()
     def args = []
     if (osName.contains("windows")) {
@@ -15,9 +15,18 @@ def runCommand(String commandName, boolean ignoreExitCode, String... commands) {
         args.add('-c')
     }
     args.addAll(commands)
-    printGreen("Executing '{}'", commandName)
+
+    if (workDir != null) {
+        printGreen("Executing '{}' in {}", commandName, workDir)
+    } else {
+        printGreen("Executing '{}'", commandName)
+    }
+
     def execOps = project.objects.newInstance(InjectedExecOps).execOps
     def result = execOps.exec {
+        if (workDir != null) {
+            workingDir = workDir
+        }
         commandLine args
         ignoreExitValue ignoreExitCode
     }
@@ -59,10 +68,10 @@ def runGradleTasks(List<String> mandatoryTasks, List<String> optionalTasks) {
     }
 }
 
-def runGradleTask(String taskName, boolean ignoreExitCode) {
+def runGradleTask(String taskName, boolean ignoreExitCode, File workDir=null) {
     def osName = System.getProperty("os.name").toLowerCase()
     def gradlewCmd = osName.contains("windows") ? "gradlew.bat" : "./gradlew"
-    return runCommand(taskName, ignoreExitCode, "${gradlewCmd} ${taskName}")
+    return runCommand(taskName, ignoreExitCode, workDir, "${gradlewCmd} ${taskName}")
 }
 
 def printGreen(String template, Object... args) {
@@ -79,6 +88,6 @@ ext.runGradleTask = { String taskName, boolean ignoreExitCode ->
     runGradleTask(taskName, ignoreExitCode)
 }
 
-ext.runCommand = { String commandName, boolean ignoreExitCode, String... commands ->
-    runCommand(commandName, ignoreExitCode, commands)
+ext.runCommand = { String commandName, boolean ignoreExitCode, File workDir, String... commands ->
+    runCommand(commandName, ignoreExitCode, workDir, commands)
 }
