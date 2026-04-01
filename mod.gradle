@@ -102,7 +102,7 @@ if (is_quilt) {
 
 // Neoforge specific variables
 if (is_neoforge) {
-    checkPlugin('net.neoforged.gradle.userdev')
+    checkPlugin('net.neoforged.moddev')
     checkProperty('neoforge_version')
 }
 
@@ -134,7 +134,10 @@ if (is_forge) {
 if (is_neoforge || is_forge) {
     // TODO Automatically detect the accesstransformer file
     ext.enable_accesstransformers = getOrDefault('enable_accesstransformers', false, it -> it.toBoolean())
-    if (enable_accesstransformers && is_forge && !legacy_forge) {
+}
+
+if (is_forge) {
+    if (enable_accesstransformers && !legacy_forge) {
         checkPlugin('net.minecraftforge.accesstransformers')
     }
 }
@@ -309,35 +312,55 @@ if (is_neoforge) {
     configurations {
         minecraftLibrary {}
         implementation.extendsFrom minecraftLibrary
-        runtimeClasspath.extendsFrom localRuntime
-    }
 
-    runs {
-        configureEach {
-            modSource project.sourceSets.main
-            systemProperty 'forge.logging.console.level', 'debug'
-            dependencies {
-                runtime project.configurations.minecraftLibrary
+        // ModClassLoader requires this for < 1.21.9.
+        // ModDevGradle disallows it for >= 1.21.9.
+        if (!satisfiesVersion(minecraft_version, '1.21.9')) {
+            matching { it.name == 'additionalRuntimeClasspath' }.configureEach {
+                extendsFrom minecraftLibrary
             }
-        }
-        client {
-            workingDirectory file('run')
-            if (random_minecraft_user_name) {
-                arguments = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
-            } else {
-                arguments = ['--username', "${minecraft_user_name_prefix}"]
-            }
-        }
-        server {
-            workingDirectory file('run/server')
-            arguments = ['--nogui']
         }
     }
 
-    sourceSets.main.resources { srcDir 'src/generated/resources' }
+    neoForge {
+        version = neoforge_version
+        validateAccessTransformers = true
 
-    if (enable_accesstransformers) {
-        minecraft.accessTransformers.file file('src/main/resources/META-INF/accesstransformer.cfg')
+        runs {
+            configureEach {
+                logLevel = org.slf4j.event.Level.DEBUG
+            }
+
+            client {
+                client()
+                gameDirectory = file('run')
+                if (random_minecraft_user_name) {
+                    programArguments = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
+                } else {
+                    programArguments = ['--username', "${minecraft_user_name_prefix}"]
+                }
+            }
+
+            server {
+                server()
+                programArgument '--nogui'
+                gameDirectory = file('run/server')
+            }
+        }
+
+        mods {
+            "${mod_id}" {
+                sourceSet(sourceSets.main)
+
+                included_projects.forEach({
+                    sourceSet project(it).sourceSets.main
+                })
+            }
+        }
+
+        if (enable_accesstransformers) {
+            accessTransformers.from "src/main/resources/META-INF/accesstransformer.cfg"
+        }
     }
 }
 
@@ -501,10 +524,6 @@ dependencies {
         modImplementation("org.quiltmc:quilt-loader:${quilt_loader_version}")
     }
 
-    if (is_neoforge) {
-        implementation "net.neoforged:neoforge:${neoforge_version}"
-    }
-
     if (is_forge) {
         if (legacy_forge) {
             minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
@@ -567,14 +586,6 @@ tasks.withType(JavaCompile).configureEach {
     }
 }
 
-if (is_neoforge) {
-    tasks.withType(JavaCompile).matching(it -> !it.name.startsWith("neo")).configureEach {
-        included_projects.forEach({
-            source(project(it).sourceSets.main.allSource)
-        })
-    }
-}
-
 processResources {
     included_projects.forEach({
         from("${project(it).projectDir}/src/main/resources")
@@ -587,20 +598,6 @@ jar {
     }
 
     // Manifest attributes
-
-    // This does not seem to be needed anymore with NeoForge, but we will still add it for now
-    if (is_neoforge) {
-        manifest {
-            attributes(['Specification-Title'     : mod_display_name,
-                        'Specification-Vendor'    : mod_authors.join(', '),
-                        'Specification-Version'   : '1',
-                        'Implementation-Title'    : mod_display_name,
-                        'Implementation-Version'  : mod_version,
-                        'Implementation-Vendor'   : mod_authors.join(', '),
-                        'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),])
-        }
-    }
-
     if (is_forge) {
         def attrs = [
                 'Specification-Title'     : mod_display_name,
