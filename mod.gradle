@@ -536,7 +536,7 @@ dependencies {
     }
 
     if (is_bukkit) {
-        implementation "org.bukkit:craftbukkit:${bukkit_version}"
+        implementation "org.bukkit:bukkit:${bukkit_version}"
     }
 
     if (is_paper) {
