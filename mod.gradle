@@ -544,8 +544,11 @@ dependencies {
     }
 
     included_projects.forEach({
-        def hasNamedElements = project(it).getConfigurations().findByName('namedElements') != null
-        def included_project = hasNamedElements ? project(path: it, configuration: 'namedElements') : project(it)
+        def proj = rootProject.project(it)
+        def hasNamedElements = proj.configurations.names.contains('namedElements')
+        def included_project = hasNamedElements
+                ? dependencies.project(path: it, configuration: 'namedElements')
+                : dependencies.project(path: it)
         compileOnly(included_project) {
             transitive false
         }
