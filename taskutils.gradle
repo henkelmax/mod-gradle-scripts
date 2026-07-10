@@ -5,41 +5,6 @@ interface InjectedExecOps {
     @Inject ExecOperations getExecOps()
 }
 
-class IndentingOutputStream extends OutputStream {
-    private static final int LF = 10
-    private static final int CR = 13
-
-    private final OutputStream target
-    private final byte[] prefix
-    private boolean atLineStart = true
-
-    IndentingOutputStream(OutputStream target, String prefix) {
-        this.target = target
-        this.prefix = prefix.getBytes()
-    }
-
-    @Override
-    synchronized void write(int b) throws IOException {
-        if (atLineStart && b != LF && b != CR) {
-            target.write(prefix)
-        }
-        atLineStart = (b == LF)
-        target.write(b)
-    }
-
-    @Override
-    synchronized void write(byte[] bytes, int offset, int length) throws IOException {
-        for (int i = 0; i < length; i++) {
-            write(bytes[offset + i] & 0xFF)
-        }
-    }
-
-    @Override
-    void flush() throws IOException {
-        target.flush()
-    }
-}
-
 def isWindows() {
     return System.getProperty('os.name').toLowerCase().contains('windows')
 }
@@ -87,15 +52,27 @@ def runCommand(String commandName, boolean ignoreExitCode, File workDir, String.
     }
 
     def execOps = project.objects.newInstance(InjectedExecOps).execOps
-    def result = execOps.exec {
-        if (workDir != null) {
-            workingDir = workDir
+    def pipeIn = new PipedInputStream()
+    def pipeOut = new PipedOutputStream(pipeIn)
+    def printer = Thread.start {
+        pipeIn.eachLine { line ->
+            logger.lifecycle("    ${line}")
         }
-        commandLine args
-        ignoreExitValue ignoreExitCode
-        def output = new IndentingOutputStream(System.out, '    ')
-        standardOutput = output
-        errorOutput = output
+    }
+    def result
+    try {
+        result = execOps.exec {
+            if (workDir != null) {
+                workingDir = workDir
+            }
+            commandLine args
+            ignoreExitValue ignoreExitCode
+            standardOutput = pipeOut
+            errorOutput = pipeOut
+        }
+    } finally {
+        pipeOut.close()
+        printer.join()
     }
     if (result.exitValue == 0) {
         printSuccess("Successfully executed '${commandName}'")
