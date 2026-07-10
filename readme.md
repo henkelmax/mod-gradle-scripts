@@ -11,7 +11,7 @@ This script supports:
 
 - Fabric Loom `1.13+`
 - Quilt Loom `1.8+`
-- NeoGradle `7.+`
+- ModDevGradle `2.+`
 - ForgeGradle `6.+`
 - Paperweight `2.0.+`
 
@@ -39,7 +39,7 @@ apply from: "https://raw.githubusercontent.com/henkelmax/mod-gradle-scripts/${mo
 | `mod_authors`                | The mod authors                                                                                                                                                   | Comma separated `String` list | `Max Henkel`                       |                                                           |               |
 | `minecraft_user_name_prefix` | The in-game player name prefix                                                                                                                                    | `String`                      | `henkelmax`                        |                                                           |               |
 | `random_minecraft_user_name` | If the in-game user name should have a random suffix                                                                                                              | `boolean`                     | `true`                             |                                                           |               |
-| `include_mixins`             | Whether Mixin should be added to the mod loader. This only applies to mod loaders that have the abilities to use Mixins and don't already include them by default | `boolean`                     | `false`                            |                                                           |               |
+| `include_mixins`             | Whether Mixin should be added to the mod loader. This only applies to mod loaders that have the abilities to use Mixins and don't already include them by default | `boolean`                     | `true`                             |                                                           |               |
 | `use_mixins`                 | Whether the mod uses Mixins. This is only needed for mod loaders that need the mixins.json registered in the buildscript                                          | `boolean`                     | `false`                            |                                                           |               |
 | `included_projects`          | The subprojects that should be included in the project                                                                                                            | Comma separated `String` list | *Empty list*                       |                                                           | `:common`     |
 | `use_shadow`                 | Whether to use shadow                                                                                                                                             | `boolean`                     | `true`                             |                                                           |               |
@@ -80,7 +80,7 @@ The Gradle plugin `org.quiltmc.loom` needs to applied before applying this scrip
 
 **If `mod_loader` `neoforge` is used**
 
-The Gradle plugins `net.neoforged.gradle.userdev` and `net.neoforged.gradle.mixin` need to applied before applying this script.
+The Gradle plugin `net.neoforged.moddev` needs to applied before applying this script.
 
 | Property                    | Description                                                                             | Type      | Default Value                      | Possible Values | Example   |
 | --------------------------- | --------------------------------------------------------------------------------------- | --------- | ---------------------------------- | --------------- | --------- |
@@ -124,7 +124,7 @@ Additionally the plugin `net.minecraftforge.accesstransformers` needs to be appl
 
 | Property                          | Description                                                                         | Type      | Default Value | Possible Values            | Example |
 | --------------------------------- | ----------------------------------------------------------------------------------- | --------- | ------------- | -------------------------- | ------- |
-| `upload_release_type`             | The release type of the upload                                                      | `String`  | `release`     | `alpha`, `beta`, `release` |         |
+| `upload_release_type`             | The release type of the upload                                                      | `String`  | `alpha`       | `alpha`, `beta`, `release` |         |
 | `upload_recommended`              | If the upload is a recommended build                                                | `boolean` | `false`       |                            |         |
 | `enable_curseforge_upload`        | Adds a CurseForge upload task                                                       | `boolean` | `true`        |                            |         |
 | `enable_curseforge_bukkit_upload` | Adds a CurseForge Bukkit upload task (For `mod_loader`=`bukkit` only)               | `boolean` | `false`       |                            |         |
@@ -164,7 +164,7 @@ The Gradle plugin `de.maxhenkel.cursegradle` needs to applied before applying th
 
 You need to set the `MODRINTH_TOKEN` environment variable to be able to upload mods.
 
-The Gradle plugin `icom.modrinth.minotaur` needs to applied before applying this script.
+The Gradle plugin `com.modrinth.minotaur` needs to applied before applying this script.
 
 | Property                                  | Description                                                                                       | Type                          | Default Value                            | Possible Values | Example          |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------- | --------------- | ---------------- |
@@ -186,7 +186,7 @@ The Gradle plugin `io.papermc.hangar-publish-plugin` needs to applied before app
 | ---------------------------------- | ----------------------------------------------- | ----------------------------- | ---------------------------------- | -------------------------------- | ----------------------------- |
 | `hangar_upload_id`                 | The ID of the Hangar project                    | `String`                      | *This field is required to be set* |                                  | `ExampleProject`              |
 | `hangar_upload_minecraft_versions` | The supported Minecraft versions for the upload | Comma separated `String` list | *Empty list*                       |                                  | `1.20.3, 1.20.4`              |
-| `hangar_upload_supported_loaders`  | The supported loaders                           | Comma separated `String` list | *Empty list*                       | `PAPER`, `VELOCITY`, `WATERFALL` | `PAPER, VELOCITY`             |
+| `hangar_upload_supported_loaders`  | The supported loaders                           | Comma separated `String` list | `PAPER`                            | `PAPER`, `VELOCITY`, `WATERFALL` | `PAPER, VELOCITY`             |
 | `hangar_upload_dependencies`       | The plugin dependencies                         | Comma separated `String` list | *Empty list*                       |                                  | `SimpleVoiceChat, ViaVersion` |
 
 
