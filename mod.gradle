@@ -916,7 +916,7 @@ if (enable_mod_update) {
         modVersion = mod_version
         changelogFile = changelog
         releaseType = upload_release_type
-        tags = upload_recommended == 'true' ? ['recommended'] : []
+        tags = upload_recommended ? ['recommended'] : []
     }
 }
 
