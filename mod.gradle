@@ -37,17 +37,17 @@ ext.minecraft_user_name_prefix = getOrDefault('minecraft_user_name_prefix', DEFA
 ext.random_minecraft_user_name = getOrDefault('random_minecraft_user_name', true, it -> it.toBoolean())
 ext.include_mixins = getOrDefault('include_mixins', true, it -> it.toBoolean()) //TODO Maybe only for Forge/NeoForge, since they are included by default from Fabric
 ext.use_mixins = getOrDefault('use_mixins', false, it -> it.toBoolean()) //TODO Maybe only for Forge/NeoForge, since they are included by default from Fabric
-ext.included_projects = getOrDefault('included_projects', [], it -> stringToStringList(it))
-
-ext.use_shadow = getOrDefault('use_shadow', true, it -> it.toBoolean())
-
-ext.included_projects = included_projects.findAll {
+ext.included_projects = getOrDefault('included_projects', [], it -> stringToStringList(it)).collect {
     def p = findProject(it)
     if (p == null) {
         throw new RuntimeException("Project '${it}' does not exist")
     }
-    return p != getProject()
+    return p.path
+}.findAll {
+    it != project.path
 }
+
+ext.use_shadow = getOrDefault('use_shadow', true, it -> it.toBoolean())
 
 // Libraries
 ext.enable_configbuilder = getOrDefault('enable_configbuilder', false, it -> it.toBoolean())
@@ -104,6 +104,9 @@ if (is_quilt) {
 if (is_neoforge) {
     checkPlugin('net.neoforged.moddev')
     checkProperty('neoforge_version')
+    if (!use_shadow && included_projects) {
+        throw new RuntimeException("Using 'included_projects' with NeoForge requires 'use_shadow' to be enabled")
+    }
 }
 
 // Forge specific variables
@@ -173,10 +176,7 @@ if (enable_curseforge_bukkit_upload) {
 }
 // Commons between CurseForge and CurseForge bukkit
 if (enable_curseforge_upload || enable_curseforge_bukkit_upload) {
-    ext.curseforge_api_key = getOrDefault('curseforge_api_key', System.env.CURSEFORGE_API_KEY ?: '')
-    if (curseforge_api_key == null || curseforge_api_key.isEmpty()) {
-        project.logger.error('Missing environment variable CURSEFORGE_API_KEY')
-    }
+    ext.curseforge_api_key = getApiKey('curseforge_api_key', 'CURSEFORGE_API_KEY')
 }
 // Modrinth upload
 ext.enable_modrinth_upload = getOrDefault('enable_modrinth_upload', true, it -> it.toBoolean())
@@ -190,10 +190,7 @@ if (enable_modrinth_upload) {
     ext.modrinth_upload_supported_game_versions = getOrDefault('modrinth_upload_supported_game_versions', [], it -> stringToStringList(it))
     ext.modrinth_upload_optional_dependencies = getOrDefault('modrinth_upload_optional_dependencies', [], it -> stringToStringList(it))
     ext.modrinth_upload_required_dependencies = getOrDefault('modrinth_upload_required_dependencies', [], it -> stringToStringList(it))
-    ext.modrinth_token = getOrDefault('modrinth_token', System.env.MODRINTH_TOKEN ?: '')
-    if (modrinth_token == null || modrinth_token.isEmpty()) {
-        project.logger.error('Missing environment variable MODRINTH_TOKEN')
-    }
+    ext.modrinth_token = getApiKey('modrinth_token', 'MODRINTH_TOKEN')
 }
 // Hangar upload
 ext.enable_hangar_upload = getOrDefault('enable_hangar_upload', false, it -> it.toBoolean())
@@ -203,19 +200,13 @@ if (enable_hangar_upload) {
     ext.hangar_upload_minecraft_versions = getOrDefault('hangar_upload_minecraft_versions', [], it -> stringToStringList(it))
     ext.hangar_upload_supported_loaders = getOrDefault('hangar_upload_supported_loaders', ['PAPER'], it -> stringToStringList(it))
     ext.hangar_upload_dependencies = getOrDefault('hangar_upload_dependencies', [], it -> stringToStringList(it))
-    ext.hangar_api_key = getOrDefault('hangar_api_key', System.env.HANGAR_API_KEY ?: '')
-    if (hangar_api_key == null || hangar_api_key.isEmpty()) {
-        project.logger.error('Missing environment variable HANGAR_API_KEY')
-    }
+    ext.hangar_api_key = getApiKey('hangar_api_key', 'HANGAR_API_KEY')
 }
 // Mod update
 ext.enable_mod_update = getOrDefault('enable_mod_update', true, it -> it.toBoolean())
 if (enable_mod_update) {
     checkPlugin('mod-update')
-    ext.mod_update_api_key = getOrDefault('mod_update_api_key', System.env.MOD_UPDATE_API_KEY ?: '')
-    if (mod_update_api_key == null || mod_update_api_key.isEmpty()) {
-        project.logger.error('Missing environment variable MOD_UPDATE_API_KEY')
-    }
+    ext.mod_update_api_key = getApiKey('mod_update_api_key', 'MOD_UPDATE_API_KEY')
 }
 
 // Mark the evaluation depending on all included projects, so its evaluated after them
@@ -951,6 +942,22 @@ def checkProperty(String propertyName) {
     if (!project.hasProperty(propertyName)) {
         throw new RuntimeException("No property '${propertyName}' defined")
     }
+}
+
+/**
+ * Gets an API key from a project property or falls back to an environment variable.
+ * Logs an error if neither is set.
+ *
+ * @param propertyName the name of the property to check
+ * @param environmentVariable the name of the environment variable to fall back to
+ * @return the API key or an empty string
+ */
+def getApiKey(String propertyName, String environmentVariable) {
+    def key = getOrDefault(propertyName, System.getenv(environmentVariable) ?: '')
+    if (key.isEmpty()) {
+        project.logger.error("Missing environment variable ${environmentVariable}")
+    }
+    return key
 }
 
 def hasPlugin(String pluginName) {
