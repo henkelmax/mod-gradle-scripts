@@ -730,7 +730,7 @@ if (enable_curseforge_upload) {
         project {
             id = curseforge_upload_id
             changelogType = 'markdown'
-            changelog = getChangelogFile()
+            changelog = getChangelogFile() ?: ''
             releaseType = upload_release_type
             curse_game_versions.forEach {
                 addGameVersion it
@@ -788,7 +788,7 @@ if (enable_curseforge_bukkit_upload) {
         project {
             id = curseforge_bukkit_upload_id
             changelogType = 'markdown'
-            changelog = getChangelogFile()
+            changelog = getChangelogFile() ?: ''
             releaseType = upload_release_type
             curseforge_bukkit_upload_minecraft_versions.forEach {
                 addGameVersion it
@@ -826,7 +826,7 @@ if (enable_modrinth_upload) {
         }
         uploadFile = getUploadArtefact()
         versionType = upload_release_type.toUpperCase()
-        changelog = getChangelogFile().text
+        changelog = getChangelogText()
         if (modrinth_upload_supported_game_versions) {
             gameVersions = modrinth_upload_supported_game_versions
         } else {
@@ -867,7 +867,7 @@ if (enable_hangar_upload) {
     })
 
     hangarPublish {
-        def changelogString = getChangelogFile().text
+        def changelogString = getChangelogText()
         def releaseString = upload_release_type.capitalize()
         publications.register('plugin') {
             version = "${mod_loader}-${mod_version}"
@@ -975,11 +975,13 @@ static def stringToStringList(Object value) {
 }
 
 def getChangelogFile() {
-    def file = file('changelog.md').exists() ? file('changelog.md') : file("${rootDir}/changelog.md")
-    if (file == null || !file.exists()) {
-        throw new RuntimeException('Missing changelog')
-    }
-    return file
+    def changelog = file('changelog.md').exists() ? file('changelog.md') : file("${rootDir}/changelog.md")
+    return changelog.exists() ? changelog : null
+}
+
+def getChangelogText() {
+    def changelog = getChangelogFile()
+    return changelog != null ? changelog.text : ''
 }
 
 def getUploadArtefact() {
