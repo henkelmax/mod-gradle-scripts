@@ -164,6 +164,7 @@ if (enable_curseforge_upload) {
     checkProperty('curseforge_upload_id')
     ext.curseforge_upload_include_prefix = getOrDefault('curseforge_upload_include_prefix', true, it -> it.toBoolean())
     ext.curseforge_upload_minecraft_versions = getOrDefault('curseforge_upload_minecraft_versions', [], it -> stringToStringList(it))
+    ext.curseforge_upload_environments = getOrDefault('curseforge_upload_environments', ['Client', 'Server'], it -> stringToStringList(it))
     ext.curseforge_upload_optional_dependencies = getOrDefault('curseforge_upload_optional_dependencies', [], it -> stringToStringList(it))
     ext.curseforge_upload_required_dependencies = getOrDefault('curseforge_upload_required_dependencies', [], it -> stringToStringList(it))
 }
@@ -724,6 +725,9 @@ if (enable_curseforge_upload) {
             changelog = getChangelogFile() ?: ''
             releaseType = upload_release_type
             curse_game_versions.forEach {
+                addGameVersion it
+            }
+            curseforge_upload_environments.forEach {
                 addGameVersion it
             }
             if (is_fabric) {
