@@ -362,14 +362,10 @@ if (is_forge) {
         }
         runs {
             // bootstraplauncher versions before Minecraft 1.19 don't export their package, which the dev launcher needs to invoke it
-            if (!satisfiesVersion(minecraft_version, '1.19')) {
+            // Versions older than 1.17 don't use bootstraplauncher and run on Java 8, which doesn't support module arguments
+            if (satisfiesVersion(minecraft_version, '1.17') && !satisfiesVersion(minecraft_version, '1.19')) {
                 configureEach {
                     jvmArgs '--add-exports=cpw.mods.bootstraplauncher/cpw.mods.bootstraplauncher=ALL-UNNAMED'
-                }
-            }
-            if (use_mixins) {
-                configureEach {
-                    args "-mixin.config=${mod_id}.mixins.json"
                 }
             }
             client {
@@ -388,6 +384,22 @@ if (is_forge) {
             data {
                 workingDir = file('run')
                 args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+            }
+            // Added after the runs are created, so the arguments aren't overwritten by the assignments above
+            if (use_mixins) {
+                configureEach {
+                    if (reobfuscate) {
+                        // Reobfuscated versions get their mixin configs from the renamer's mixin support.
+                        // Versions older than 1.13 use launchwrapper, which additionally needs the mixin tweaker.
+                        // The arguments are placed after a '--', so the dev launcher passes them through
+                        // instead of deduplicating the '--tweakClass' argument against the FML tweaker
+                        if (!satisfiesVersion(minecraft_version, '1.13')) {
+                            args '--', '--tweakClass', 'org.spongepowered.asm.launch.MixinTweaker'
+                        }
+                    } else {
+                        args "-mixin.config=${mod_id}.mixins.json"
+                    }
+                }
             }
         }
     }
@@ -563,6 +575,14 @@ jar {
             attrs.put('MixinConnector', mixin_connector_path)
         } else if (use_mixins) {
             attrs.put('MixinConfigs', "${mod_id}.mixins.json")
+            // Versions older than 1.13 use launchwrapper, which bootstraps mixin via the tweaker from the jar manifest.
+            // The FML attributes make FML still load the jar as a mod, even though it contains a tweaker
+            if (!satisfiesVersion(minecraft_version, '1.13')) {
+                attrs.put('TweakClass', 'org.spongepowered.asm.launch.MixinTweaker')
+                attrs.put('TweakOrder', '0')
+                attrs.put('FMLCorePluginContainsFMLMod', 'true')
+                attrs.put('ForceLoadAsMod', 'true')
+            }
         }
         manifest {
             attributes(attrs)
@@ -636,6 +656,26 @@ if (is_forge) {
         renamer.mappings.from minecraft.dependency.toSrgFile
         renamer.classes('reobfJar', tasks.named(use_shadow ? 'shadowJar' : 'jar', Jar)) {
             archiveClassifier = ''
+        }
+        if (use_mixins) {
+            // MixinGradle does not support ForgeGradle 7, so the renamer's mixin support is used instead.
+            // It configures the mixin annotation processor, which generates the refmap
+            // and the mappings needed to reobfuscate the mixin classes.
+            // Note that the mixin annotation processor needs to be added to the 'annotationProcessor' configuration
+            renamer.enableMixinRefmaps {
+                refMap = "${mod_id}.refmap.json"
+                config "${mod_id}.mixins.json"
+                source sourceSets.main
+                jar tasks.named('jar', Jar)
+                if (use_shadow) {
+                    jar tasks.named('shadowJar', Jar)
+                }
+                minecraft.runs.each { run it }
+            }
+            // Reobfuscate with the mixin mappings included, so that shadowed members in mixin classes get renamed
+            tasks.named('reobfJar') {
+                map.setFrom(renamer.mixin.generatedMappings.flatMap { it.output })
+            }
         }
         assemble.dependsOn('reobfJar')
     } else if (use_shadow) {
