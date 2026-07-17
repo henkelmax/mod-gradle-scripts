@@ -361,6 +361,12 @@ if (is_forge) {
             }
         }
         runs {
+            // bootstraplauncher versions before Minecraft 1.19 don't export their package, which the dev launcher needs to invoke it
+            if (!satisfiesVersion(minecraft_version, '1.19')) {
+                configureEach {
+                    jvmArgs '--add-exports=cpw.mods.bootstraplauncher/cpw.mods.bootstraplauncher=ALL-UNNAMED'
+                }
+            }
             if (use_mixins) {
                 configureEach {
                     args "-mixin.config=${mod_id}.mixins.json"
