@@ -16,7 +16,6 @@ def DEFAULT_MINECRAFT_USER_NAME_PREFIX = 'henkelmax'
 def DEFAULT_CONFIGBUILDER_VERSION = '2.0.2'
 //TODO Fail if not explicitly set
 def DEFAULT_FABRIC_LOADER_VERSION = '0.15.1'
-def DEFAULT_MIXIN_ANNOTATION_PROCESSOR_VERSION = '0.8.4'
 
 // Check for min Gradle version
 if (!satisfiesVersion(getProject().getGradle().getGradleVersion(), MIN_GRADLE_VERSION)) {
@@ -113,24 +112,15 @@ if (is_neoforge) {
 if (is_forge) {
     checkPlugin('net.minecraftforge.gradle')
     checkProperty('forge_version')
-    ext.mixin_annotation_processor_version = getOrDefault('mixin_annotation_processor_version', DEFAULT_MIXIN_ANNOTATION_PROCESSOR_VERSION)
     // Merge the resources and classes into the same directory
     ext.merge_files = getOrDefault('merge_files', true, it -> it.toBoolean())
     // Defaults to official mappings if not present
     ext.forge_mappings_channel = getOrDefault('forge_mappings_channel', 'official')
     ext.forge_mappings_version = getOrDefault('forge_mappings_version', minecraft_version)
-    def needs_reobf = !satisfiesVersion(minecraft_version, '1.20.2')
-    ext.legacy_forge = getOrDefault('legacy_forge', needs_reobf, it -> it.toBoolean())
-    if (project.hasProperty('reobfuscate')) {
-        throw new RuntimeException('Property "reobfuscate" is not required anymore')
-    }
-    ext.reobfuscate = needs_reobf
-    if (legacy_forge && !reobfuscate) {
-        minecraft.reobf = false
-    }
-    if (legacy_forge && include_mixins) {
-        // Mixin
-        checkPlugin('org.spongepowered.mixin')
+    // Forge uses obfuscated (SRG) names at runtime before 1.20.2, so built jars need to be reobfuscated
+    ext.reobfuscate = !satisfiesVersion(minecraft_version, '1.20.2')
+    if (reobfuscate) {
+        checkPlugin('net.minecraftforge.renamer')
     }
 }
 
@@ -140,7 +130,7 @@ if (is_neoforge || is_forge) {
 }
 
 if (is_forge) {
-    if (enable_accesstransformers && !legacy_forge) {
+    if (enable_accesstransformers) {
         checkPlugin('net.minecraftforge.accesstransformers')
     }
 }
@@ -360,42 +350,24 @@ if (is_neoforge) {
 if (is_forge) {
     minecraft {
         mappings channel: forge_mappings_channel, version: forge_mappings_version
-        if (legacy_forge) {
-            copyIdeResources = true
-        }
         //TODO Use this instead of "enable_accesstransformers"
         /*def at = file('src/main/resources/META-INF/accesstransformer.cfg')
         if (at.exists()) {
             accessTransformer = at
         }*/
         if (enable_accesstransformers) {
-            if (legacy_forge) {
-                accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
-            } else {
-                //accessTransformers(true)
-                accessTransformers {
-                    accessTransformers = "META-INF/accesstransformer.cfg"
-                }
+            accessTransformers {
+                accessTransformers = "META-INF/accesstransformer.cfg"
             }
         }
         runs {
-            if (legacy_forge) {
+            if (use_mixins) {
                 configureEach {
-                    property 'forge.logging.console.level', 'debug'
-                }
-            } else {
-                if (use_mixins) {
-                    configureEach {
-                        args "-mixin.config=${mod_id}.mixins.json"
-                    }
+                    args "-mixin.config=${mod_id}.mixins.json"
                 }
             }
             client {
-                if (legacy_forge) {
-                    workingDirectory file('run')
-                } else {
-                    workingDir = file('run')
-                }
+                workingDir = file('run')
 
                 if (random_minecraft_user_name) {
                     args = ['--username', "${minecraft_user_name_prefix}${new Random().nextInt(1000)}"]
@@ -404,43 +376,28 @@ if (is_forge) {
                 }
             }
             server {
-                if (legacy_forge) {
-                    workingDirectory file('run/server')
-                } else {
-                    workingDir = file('run/server')
-                }
+                workingDir = file('run/server')
                 args = ['--nogui']
             }
             data {
-                if (legacy_forge) {
-                    workingDirectory file('run')
-                    args '--mod', mod_id, '--all', '--output', file('src/generated/resources/')
-                } else {
-                    workingDir = file('run')
-                    args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
-                }
+                workingDir = file('run')
+                args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
             }
         }
     }
 
     sourceSets.main.resources.srcDir 'src/generated/resources'
 
-    if (legacy_forge && use_mixins) {
-        mixin {
-            add sourceSets.main, "${mod_id}.refmap.json"
-        }
+    configurations {
+        minecraftLibrary {}
+        implementation.extendsFrom minecraftLibrary
     }
 
-    // This does not seem to be needed and causes issues with Forge 1.16.5
-    /*sourceSets.each {
-        def dir = layout.buildDirectory.dir("sourcesSets/$it.name")
-        it.output.resourcesDir = dir
-        it.java.destinationDirectory = dir
-    }*/
-    if (!legacy_forge) {
-        configurations {
-            minecraftLibrary {}
-            implementation.extendsFrom minecraftLibrary
+    // Forge isolates the mod's module layer from the plain runtime classpath, so libraries that are
+    // shaded into the production jar have to be added to the Minecraft classpath to be visible in dev
+    afterEvaluate {
+        tasks.matching { it.name in ['runClient', 'runServer', 'runData'] }.configureEach {
+            minecraftClasspath.from(configurations.minecraftLibrary)
         }
     }
 }
@@ -460,7 +417,7 @@ repositories {
     if (!is_bukkit) {
         maven { url = 'https://libraries.minecraft.net' }
     }
-    if (is_forge && !legacy_forge) {
+    if (is_forge) {
         maven minecraft.mavenizer
         maven fg.forgeMaven
         maven fg.minecraftLibsMaven
@@ -517,14 +474,7 @@ dependencies {
     }
 
     if (is_forge) {
-        if (legacy_forge) {
-            minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-            if (include_mixins) {
-                annotationProcessor "org.spongepowered:mixin:${mixin_annotation_processor_version}:processor"
-            }
-        } else {
-            implementation minecraft.dependency("net.minecraftforge:forge:${minecraft_version}-${forge_version}")
-        }
+        implementation minecraft.dependency("net.minecraftforge:forge:${minecraft_version}-${forge_version}")
     }
 
     if (is_bukkit) {
@@ -611,9 +561,6 @@ jar {
         manifest {
             attributes(attrs)
         }
-        if (legacy_forge && minecraft.reobf) {
-            finalizedBy 'reobfJar'
-        }
     }
 }
 
@@ -621,7 +568,7 @@ if (use_shadow) {
     shadowJar {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         configurations = [project.configurations.shadow]
-        if (is_quilt || (is_fabric && remap_fabric)) {
+        if (is_quilt || (is_fabric && remap_fabric) || (is_forge && reobfuscate)) {
             archiveClassifier = 'shadow-dev'
         } else {
             archiveClassifier = ''
@@ -674,15 +621,19 @@ if (is_neoforge) {
 }
 
 if (is_forge) {
-    if (use_shadow) {
-        if (legacy_forge && minecraft.reobf) {
-            shadowJar.dependsOn('reobfJar')
-            reobf {
-                shadowJar {}
+    if (reobfuscate) {
+        if (!use_shadow) {
+            jar {
+                archiveClassifier = 'dev'
             }
-        } else {
-            assemble.dependsOn('shadowJar')
         }
+        renamer.mappings.from minecraft.dependency.toSrgFile
+        renamer.classes('reobfJar', tasks.named(use_shadow ? 'shadowJar' : 'jar', Jar)) {
+            archiveClassifier = ''
+        }
+        assemble.dependsOn('reobfJar')
+    } else if (use_shadow) {
+        assemble.dependsOn('shadowJar')
     }
     if (merge_files) {
         sourceSets.each {
@@ -768,11 +719,7 @@ if (enable_curseforge_upload) {
             forgeGradleIntegration = false
         }
     }
-    if (use_shadow) {
-        tasks.curseforge.dependsOn(shadowJar)
-    } else {
-        tasks.curseforge.dependsOn(jar)
-    }
+    tasks.curseforge.dependsOn(getUploadArtefact())
 }
 
 // CurseForge Bukkit upload
@@ -794,11 +741,7 @@ if (enable_curseforge_bukkit_upload) {
             }
         }
     }
-    if (use_shadow) {
-        tasks.curseforge.dependsOn(shadowJar)
-    } else {
-        tasks.curseforge.dependsOn(jar)
-    }
+    tasks.curseforge.dependsOn(getUploadArtefact())
 }
 
 // Modrinth Upload
@@ -848,11 +791,7 @@ if (enable_modrinth_upload) {
             syncBodyFrom = readmeFile.text
         }
     }
-    if (use_shadow) {
-        tasks.modrinth.dependsOn(shadowJar)
-    } else {
-        tasks.modrinth.dependsOn(jar)
-    }
+    tasks.modrinth.dependsOn(getUploadArtefact())
 }
 
 // Hangar upload
@@ -889,14 +828,8 @@ if (enable_hangar_upload) {
         }
     }
 
-    if (use_shadow) {
-        tasks.publishAllPublicationsToHangar.dependsOn(shadowJar)
-        tasks.publishPluginPublicationToHangar.dependsOn(shadowJar)
-    } else {
-        tasks.publishAllPublicationsToHangar.dependsOn(jar)
-        tasks.publishPluginPublicationToHangar.dependsOn(jar)
-    }
-
+    tasks.publishAllPublicationsToHangar.dependsOn(getUploadArtefact())
+    tasks.publishPluginPublicationToHangar.dependsOn(getUploadArtefact())
 }
 
 // Mod Update
@@ -1001,6 +934,9 @@ def getUploadArtefact() {
     }
     if (is_fabric && remap_fabric) {
         return remapJar;
+    }
+    if (is_forge && reobfuscate) {
+        return reobfJar.output
     }
     return use_shadow ? shadowJar : jar
 }
