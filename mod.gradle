@@ -78,11 +78,6 @@ if (is_fabric) {
     }
 
     ext.fabric_loader_version = getOrDefault('fabric_loader_version', DEFAULT_FABRIC_LOADER_VERSION)
-    ext.included_fabric_api_modules = getOrDefault('included_fabric_api_modules', [], it -> stringToStringList(it))
-    ext.import_fabric_api = getOrDefault('import_fabric_api', false, it -> it.toBoolean())
-    if (import_fabric_api || included_fabric_api_modules) {
-        checkProperty('fabric_api_version')
-    }
     // TODO Add access widener path to fabric.mod.json
     ext.enable_accesswideners = getOrDefault('enable_accesswideners', false, it -> it.toBoolean())
     ext.add_quilt_supported_tag = getOrDefault('add_quilt_supported_tag', true, it -> it.toBoolean())
@@ -93,10 +88,26 @@ if (is_fabric) {
 
 // Quilt specific variables
 if (is_quilt) {
-    checkPlugin('org.quiltmc.loom')
+    if (hasPlugin('org.quiltmc.loom.no_remap')) {
+        ext.remap_quilt = false
+    } else if (hasPlugin('org.quiltmc.loom.remap') || hasPlugin('org.quiltmc.loom')) {
+        ext.remap_quilt = true
+    } else {
+        throw new RuntimeException("Missing plugin 'org.quiltmc.loom.no_remap' or 'org.quiltmc.loom.remap'")
+    }
+
     checkProperty('quilt_loader_version')
     // TODO Add access widener path to quilt.mod.json
     ext.enable_accesswideners = getOrDefault('enable_accesswideners', false, it -> it.toBoolean())
+}
+
+// Fabric API variables (used by Fabric and Quilt)
+if (is_fabric || is_quilt) {
+    ext.included_fabric_api_modules = getOrDefault('included_fabric_api_modules', [], it -> stringToStringList(it))
+    ext.import_fabric_api = getOrDefault('import_fabric_api', false, it -> it.toBoolean())
+    if (import_fabric_api || included_fabric_api_modules) {
+        checkProperty('fabric_api_version')
+    }
 }
 
 // Neoforge specific variables
@@ -468,27 +479,37 @@ dependencies {
         } else {
             implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
         }
-        // Fabric API
+    }
+
+    if (is_quilt) {
+        minecraft "com.mojang:minecraft:${minecraft_version}"
+        if (remap_quilt) {
+            mappings loom.officialMojangMappings()
+        }
+        if (remap_quilt) {
+            modImplementation "org.quiltmc:quilt-loader:${quilt_loader_version}"
+        } else {
+            implementation "org.quiltmc:quilt-loader:${quilt_loader_version}"
+        }
+    }
+
+    // Fabric API
+    if (is_fabric || is_quilt) {
+        def remap = is_fabric ? remap_fabric : remap_quilt
         included_fabric_api_modules.forEach {
-            if (remap_fabric) {
+            if (remap) {
                 include(modImplementation(fabricApi.module(it, fabric_api_version)))
             } else {
                 include(implementation(fabricApi.module(it, fabric_api_version)))
             }
         }
         if (import_fabric_api) {
-            if (remap_fabric) {
+            if (remap) {
                 modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
             } else {
                 implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
             }
         }
-    }
-
-    if (is_quilt) {
-        minecraft "com.mojang:minecraft:${minecraft_version}"
-        mappings loom.officialMojangMappings()
-        modImplementation("org.quiltmc:quilt-loader:${quilt_loader_version}")
     }
 
     if (is_forge) {
@@ -594,14 +615,14 @@ if (use_shadow) {
     shadowJar {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         configurations = [project.configurations.shadow]
-        if (is_quilt || (is_fabric && remap_fabric) || (is_forge && reobfuscate)) {
+        if ((is_fabric && remap_fabric) || (is_quilt && remap_quilt) || (is_forge && reobfuscate)) {
             archiveClassifier = 'shadow-dev'
         } else {
             archiveClassifier = ''
         }
-        if (is_fabric && !remap_fabric) {
-            // For non-remapped Fabric, we need to take the normal jar as base,
-            // since Fabric now adds the include(...) jars in the jar task
+        if ((is_fabric && !remap_fabric) || (is_quilt && !remap_quilt)) {
+            // For non-remapped Fabric/Quilt, we need to take the normal jar as base,
+            // since Loom now adds the include(...) jars in the jar task
             jar {
                 archiveClassifier = 'dev'
             }
@@ -634,9 +655,13 @@ if (is_fabric && use_shadow) {
 }
 
 if (is_quilt && use_shadow) {
-    remapJar {
-        dependsOn shadowJar
-        inputFile = shadowJar.archiveFile.get()
+    if (remap_quilt) {
+        remapJar {
+            dependsOn shadowJar
+            inputFile = shadowJar.archiveFile.get()
+        }
+    } else {
+        assemble.dependsOn('shadowJar')
     }
 }
 
@@ -975,7 +1000,7 @@ def getChangelogText() {
 }
 
 def getUploadArtefact() {
-    if (is_quilt) {
+    if (is_quilt && remap_quilt) {
         return remapJar;
     }
     if (is_fabric && remap_fabric) {
