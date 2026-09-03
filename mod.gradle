@@ -249,6 +249,24 @@ group = getOrDefault('maven_group', "de.maxhenkel.${mod_id.replaceAll('_', '')}"
 version = mod_version
 
 // Run configurations
+
+// Synchronized chunk writes cause severe performance issues on Linux
+if (System.getProperty('os.name').toLowerCase().contains('linux')) {
+    def client_run_dir = is_fabric || is_quilt ? file(loom.runs.client.getRunDirectory()) : file('run')
+    def server_run_dir = is_fabric || is_quilt ? file(loom.runs.server.getRunDirectory()) : file('run/server')
+
+    tasks.withType(JavaExec).matching { it.name == 'runClient' }.configureEach {
+        doFirst {
+            disableSyncChunkWrites(new File(client_run_dir, 'options.txt'), 'syncChunkWrites', ':')
+        }
+    }
+    tasks.withType(JavaExec).matching { it.name == 'runServer' }.configureEach {
+        doFirst {
+            disableSyncChunkWrites(new File(server_run_dir, 'server.properties'), 'sync-chunk-writes', '=')
+        }
+    }
+}
+
 // Fabric run configuration
 if (is_fabric) {
     if (random_minecraft_user_name) {
@@ -1035,4 +1053,25 @@ static boolean satisfiesVersion(String actual, String expected) {
         }
     }
     return true
+}
+
+/**
+ * Sets the sync chunk writes option to false in a Minecraft settings file.
+ *
+ * @param file the settings file, created if it doesn't exist
+ * @param key the name of the option
+ * @param separator the character separating the option name from its value
+ */
+void disableSyncChunkWrites(File file, String key, String separator) {
+    List<String> lines = file.exists() ? file.readLines() : []
+    int index = lines.findIndexOf { it.startsWith("${key}${separator}") }
+    String entry = "${key}${separator}false"
+    if (index < 0) {
+        lines.add(entry)
+    } else {
+        lines.set(index, entry)
+    }
+    file.parentFile.mkdirs()
+    file.text = lines.join('\n') + '\n'
+    project.logger.lifecycle("Disabled sync chunk writes in ${project.relativePath(file)}")
 }
