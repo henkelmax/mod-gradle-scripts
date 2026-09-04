@@ -252,8 +252,8 @@ version = mod_version
 
 // Synchronized chunk writes cause severe performance issues on Linux
 if (System.getProperty('os.name').toLowerCase().contains('linux')) {
-    def client_run_dir = is_fabric || is_quilt ? file(loom.runs.client.getRunDirectory()) : file('run')
-    def server_run_dir = is_fabric || is_quilt ? file(loom.runs.server.getRunDirectory()) : file('run/server')
+    def client_run_dir = is_fabric ? file(loom.runs.client.getRunDirectory()) : file('run')
+    def server_run_dir = is_fabric ? file(loom.runs.server.getRunDirectory()) : (is_forge || is_neoforge ? file('run/server') : file('run'))
 
     tasks.withType(JavaExec).matching { it.name == 'runClient' }.configureEach {
         doFirst {
