@@ -785,7 +785,9 @@ if (enable_curseforge_upload) {
             if (is_forge) {
                 addGameVersion 'Forge'
             }
-            addGameVersion "Java ${java_version}"
+            if (!is_bukkit) {
+                addGameVersion "Java ${java_version}"
+            }
             mainArtifact(getUploadArtefact()) {
                 if (curseforge_upload_include_prefix) {
                     displayName = "[${mod_loader.toUpperCase()}][${minecraft_version}] ${mod_display_name} ${mod_version}"
